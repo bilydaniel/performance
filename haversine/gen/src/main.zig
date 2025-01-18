@@ -8,14 +8,16 @@ const print = std.debug.print;
 //  ]
 //}
 
-const Center = struct {
+const Point = struct {
     x: f64,
     y: f64,
-
-    pub fn New(rng: std.rand.DefaultPrng) Center {
-        return Center{.x0};
-    }
 };
+
+fn generateValue(rng: *std.rand.DefaultPrng, max: f64) f64 {
+    const value = rng.random().float(f64);
+    const min = -max;
+    return (min + (value * (max - min)));
+}
 
 pub fn main() !void {
     var args = std.process.args();
@@ -67,27 +69,26 @@ pub fn main() !void {
     //TODO: make a random generator
     if (seed == null) {
         const microtimestamp = @abs(std.time.microTimestamp());
-        print("{}\n", .{microtimestamp});
         seed = microtimestamp;
     }
 
     var rng: std.rand.DefaultPrng = std.rand.DefaultPrng.init(seed orelse undefined);
-    print("{}\n", .{rng.next()});
 
     var file = try std.fs.cwd().createFile("pairs.json", .{});
     defer file.close();
 
     _ = try file.write("{\n\"pairs\": [\n");
 
-    center = Center.New(rng);
+    var center: Point = undefined;
+    center.x = generateValue(&rng, 180);
+    center.y = generateValue(&rng, 90);
+    print("{}\n", .{center});
     for (0..pairs) |i| {
         if (uniform) {
-            pair_data = randomPair(rng);
+            //pair_data = randomPair(rng);
         } else {
-            pair_data = randomPairCenter(rng, center);
+            //pair_data = randomPairCenter(rng, center);
         }
-
-        print("{}", .{i});
     }
     _ = try file.write("]\n}");
 }
