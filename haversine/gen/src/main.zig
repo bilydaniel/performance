@@ -102,6 +102,7 @@ pub fn main() !void {
     defer file.close();
 
     _ = try file.write("{\n\"pairs\": [\n");
+    const writer = file.writer();
 
     var center: Point = undefined;
     if (!uniform) {
@@ -128,11 +129,9 @@ pub fn main() !void {
         haversine_sum += haversine_value;
 
         if (i == pairs - 1) {
-            //file.write("{}", .{});
+            try writer.print("\t\t{{\"x0\": {d},\"y0\":{d},\"x1\":{d},\"y1\":{d} }}\n", .{ point0.x, point0.y, point1.x, point1.y });
         } else {
-            const writer = file.writer();
-            try writer.print("{{\"x0\": {d},\"y0\":{d} }}, \n", .{ point0.x, point0.y });
-            //_ = try file.write("{\"x0\"\:}");
+            try writer.print("\t\t{{\"x0\": {d},\"y0\":{d},\"x1\":{d},\"y1\":{d} }},\n", .{ point0.x, point0.y, point1.x, point1.y });
         }
         //print("{d}\n", .{haversine_value});
         //std.debug.print("0: \tx:{d:.2}\n\ty:{d:.2}\n", .{ point0.x, point0.y });
