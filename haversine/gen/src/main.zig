@@ -1,12 +1,15 @@
 const std = @import("std");
 
 const print = std.debug.print;
+const math = std.math;
 
 //{
 //  "pairs": [
 //      {"x0": 3, "y0": 6}
 //  ]
 //}
+
+const EARTH_RADIUS = 6372.8; // KM
 
 const Point = struct {
     x: f64,
@@ -19,6 +22,35 @@ fn generateValue(rng: *std.rand.DefaultPrng, max: f64) f64 {
     return (min + (value * (max - min)));
 }
 
+fn generateValueCenter(rng: *std.rand.DefaultPrng, max: f64, center: f64) f64 {
+    const value = rng.random().float(f64);
+    const min = -max;
+    const offset = (min + (value * (max - min))) / 3;
+    const result = center + offset;
+    if (result > max) {
+        return max;
+    }
+    if (result < -max) {
+        return -max;
+    }
+    return result;
+}
+
+fn haversine(x0: f64, y0: f64, x1: f64, y1: f64, radius: f64) f64 {
+    const dy = DgrToRad(y1 - y0);
+    const dx = DgrToRad(x1 - x0);
+    const y0_rad = DgrToRad(y0);
+    const y1_rad = DgrToRad(y1);
+
+    const rootTerm = (math.pow(f64, math.sin(dy / 2), 2)) + math.cos(y0_rad) * math.cos(y1_rad) * (math.pow(f64, math.sin(dx / 2), 2));
+    const result = 2 * radius * math.asin(math.sqrt(rootTerm));
+    return result;
+}
+
+fn DgrToRad(dgr: f64) f64 {
+    return (dgr * (std.math.pi / 180.0));
+}
+
 pub fn main() !void {
     var args = std.process.args();
 
@@ -26,11 +58,6 @@ pub fn main() !void {
     _ = args.next();
 
     const argMap = try take_args(&args);
-
-    var it = argMap.iterator();
-    while (it.next()) |x| {
-        print("key:{s}\nvalue:{s}\n", .{ x.key_ptr.*, x.value_ptr.* });
-    }
 
     const uniformMap: []const u8 = argMap.get("uniform") orelse "false";
     var uniform: bool = false;
@@ -58,12 +85,9 @@ pub fn main() !void {
     }
 
     const clusterMap: ?[]const u8 = argMap.get("cluster");
-    var cluster: ?i64 = null;
-    if (!uniform) {
-        cluster = 10;
-    }
+    var cluster: usize = pairs / 16;
     if (clusterMap) |value| {
-        cluster = try std.fmt.parseInt(i64, value, 10);
+        cluster = try std.fmt.parseInt(usize, value, 10);
     }
 
     //TODO: make a random generator
@@ -80,17 +104,47 @@ pub fn main() !void {
     _ = try file.write("{\n\"pairs\": [\n");
 
     var center: Point = undefined;
-    center.x = generateValue(&rng, 180);
-    center.y = generateValue(&rng, 90);
-    print("{}\n", .{center});
+    if (!uniform) {
+        center.x = generateValue(&rng, 180);
+        center.y = generateValue(&rng, 90);
+    }
+    var point0: Point = undefined;
+    var point1: Point = undefined;
+    var haversine_sum: f64 = 0;
     for (0..pairs) |i| {
         if (uniform) {
-            //pair_data = randomPair(rng);
+            point0.x = generateValue(&rng, 180);
+            point0.y = generateValue(&rng, 90);
+            point1.x = generateValue(&rng, 180);
+            point1.y = generateValue(&rng, 90);
         } else {
-            //pair_data = randomPairCenter(rng, center);
+            point0.x = generateValueCenter(&rng, 180, center.x);
+            point0.y = generateValueCenter(&rng, 90, center.y);
+            point1.x = generateValueCenter(&rng, 180, center.x);
+            point1.y = generateValueCenter(&rng, 90, center.y);
+        }
+
+        const haversine_value = haversine(point0.x, point0.y, point1.x, point1.y, EARTH_RADIUS);
+        haversine_sum += haversine_value;
+
+        if (i == pairs - 1) {
+            //file.write("{}", .{});
+        } else {
+            const writer = file.writer();
+            try writer.print("{{\"x0\": {d},\"y0\":{d} }}, \n", .{ point0.x, point0.y });
+            //_ = try file.write("{\"x0\"\:}");
+        }
+        //print("{d}\n", .{haversine_value});
+        //std.debug.print("0: \tx:{d:.2}\n\ty:{d:.2}\n", .{ point0.x, point0.y });
+        //std.debug.print("1: \tx:{d:.2}\n\ty:{d:.2}\n", .{ point1.x, point1.y });
+        if (!uniform and @mod(i, cluster) == 0) {
+            center.x = generateValue(&rng, 180);
+            center.y = generateValue(&rng, 90);
         }
     }
     _ = try file.write("]\n}");
+    const haversine_avg = haversine_sum / @as(f64, @floatFromInt(pairs));
+    print("{d}\n", .{haversine_avg});
 }
 
 fn take_args(args: *std.process.ArgIterator) !std.StringHashMap([]const u8) {
