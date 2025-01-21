@@ -1,5 +1,34 @@
 const std = @import("std");
 
+const print = std.debug.print;
+
+const JsonValue = union(enum) {
+    null,
+    boolean: bool,
+    number: f64,
+    string: []const u8,
+    array: []JsonValue,
+    object: std.StringHashMap(JsonValue),
+};
+
+pub fn parse(file: *std.fs.File) !JsonValue {
+    try file.seekTo(0);
+    var char: u8 = undefined;
+    while (true) {
+        print("test\n", .{});
+        char = file.reader().readByte() catch |err| {
+            print("READING ERROR: {}\n", .{err});
+            break;
+        };
+        print("{}\n", .{char});
+    }
+    print("{}", .{file});
+    const value = JsonValue{ .null = {} };
+    print("{}", .{value});
+
+    return JsonValue{ .null = {} };
+}
+
 const Pair = struct {
     x0: f64,
     y0: f64,

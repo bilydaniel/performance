@@ -2,6 +2,24 @@ const std = @import("std");
 const zson = @import("zson.zig");
 
 const print = std.debug.print;
+const math = std.math;
+
+const EARTH_RADIUS = 6372.8; // KM
+
+fn DgrToRad(dgr: f64) f64 {
+    return (dgr * (std.math.pi / 180.0));
+}
+
+fn haversine(x0: f64, y0: f64, x1: f64, y1: f64, radius: f64) f64 {
+    const dy = DgrToRad(y1 - y0);
+    const dx = DgrToRad(x1 - x0);
+    const y0_rad = DgrToRad(y0);
+    const y1_rad = DgrToRad(y1);
+
+    const rootTerm = (math.pow(f64, math.sin(dy / 2), 2)) + math.cos(y0_rad) * math.cos(y1_rad) * (math.pow(f64, math.sin(dx / 2), 2));
+    const result = 2 * radius * math.asin(math.sqrt(rootTerm));
+    return result;
+}
 
 pub fn main() !void {
     const start_time = std.time.milliTimestamp();
@@ -19,18 +37,28 @@ pub fn main() !void {
     //std.debug.print("{s}\n", .{content});
 
     const data = try zson.mock();
+    const data2 = try zson.parse(&file);
+
+    print("{}\n", .{data2});
+    print("****************************\n", .{});
 
     const mid_time = std.time.milliTimestamp();
 
-    const sum: f64 = 0;
-    const count: i64 = 0;
+    var sum: f64 = 0;
+    var count: i64 = 0;
 
     for (data.pairs) |pair| {
         print("{d} {d} {d} {d}\n", pair);
+        sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);
+        count += 1;
     }
+    const average = sum / @as(f64, @floatFromInt(count));
+    const end_time = std.time.milliTimestamp();
 
-    print("{}\n", .{sum});
-    print("{}\n", .{count});
+    print("{d}\n", .{sum});
+    print("{d}\n", .{count});
+    print("{d}\n", .{average});
     print("{d}\n", .{start_time});
-    print("{d}\n", .{start_time - mid_time});
+    print("{d}\n", .{mid_time});
+    print("{d}\n", .{end_time});
 }

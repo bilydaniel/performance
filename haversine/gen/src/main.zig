@@ -129,6 +129,7 @@ pub fn main() !void {
         haversine_sum += haversine_value;
 
         if (i == pairs - 1) {
+            //TODO: add .16 for 16 decimal places
             try writer.print("\t\t{{\"x0\": {d},\"y0\":{d},\"x1\":{d},\"y1\":{d} }}\n", .{ point0.x, point0.y, point1.x, point1.y });
         } else {
             try writer.print("\t\t{{\"x0\": {d},\"y0\":{d},\"x1\":{d},\"y1\":{d} }},\n", .{ point0.x, point0.y, point1.x, point1.y });
