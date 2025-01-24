@@ -2,6 +2,26 @@ const std = @import("std");
 
 const print = std.debug.print;
 
+pub const HaversinePair = struct {
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+};
+
+const JsonParser = struct {
+    source: std.ArrayList(u8),
+    at: u64,
+    hadError: u32,
+};
+
+const JsonElement = struct {
+    label: std.ArrayList(u8),
+    value: std.ArrayList(u8),
+    firstSubElement: *JsonElement,
+    nextSibling: *JsonElement,
+};
+
 const JsonValue = union(enum) {
     null,
     boolean: bool,
@@ -15,18 +35,33 @@ pub fn parse(file: *std.fs.File) !JsonValue {
     try file.seekTo(0);
     var char: u8 = undefined;
     while (true) {
-        print("test\n", .{});
         char = file.reader().readByte() catch |err| {
             print("READING ERROR: {}\n", .{err});
             break;
         };
-        print("{}\n", .{char});
+        //print("{}\n", .{char});
     }
     print("{}", .{file});
     const value = JsonValue{ .null = {} };
     print("{}", .{value});
 
     return JsonValue{ .null = {} };
+}
+
+fn parseJSON(input: []u8) !JsonElement {
+    var json_parser = JsonParser{};
+    json_parser.source = input;
+}
+
+pub fn parseHaversinePairs(input: []u8, parsed_values: std.ArrayList(HaversinePair)) !u64 {
+    //TODO: I need to initialize all the arraylists, figure out when and how
+    var pair_count: u64 = 0;
+    _ = parsed_values;
+    pair_count += 1;
+
+    const JSON = parseJSON(input);
+
+    return pair_count;
 }
 
 const Pair = struct {

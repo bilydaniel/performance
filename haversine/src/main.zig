@@ -32,14 +32,25 @@ pub fn main() !void {
     const file_size = meta.size();
     defer file.close();
 
-    const content = try file.readToEndAlloc(allocator, file_size);
-    defer allocator.free(content);
+    const inputJSON = try file.readToEndAlloc(allocator, file_size);
+    defer allocator.free(inputJSON);
     //std.debug.print("{s}\n", .{content});
 
-    const data = try zson.mock();
-    const data2 = try zson.parse(&file);
+    //TODO: casey ma tohle:
+    //u32 MinimumJSONPairEncoding = 6*4;
+    //u64 MaxPairCount = InputJSON.Count / MinimumJSONPairEncoding;
+    //nechci zatim pouzivat, je to "optimalizace"
+    const parsed_values = std.ArrayList(zson.haversine_pair).init(allocator);
+    defer parsed_values.deinit();
 
-    print("{}\n", .{data2});
+    //print("INPUT_JSON: {s}\n", .{inputJSON});
+    print("parse_values: {}\n", .{parsed_values});
+    print("LEN: {d}\n", .{inputJSON.len});
+    const data = try zson.mock();
+    //const pairs_count = try zson.parseHaversinePairs(inputJSON, parsed_values);
+    print("parsed_values: {}\n", .{parsed_values});
+
+    //print("{}\n", .{pairs_count});
     print("****************************\n", .{});
 
     const mid_time = std.time.milliTimestamp();
