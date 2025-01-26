@@ -13,6 +13,28 @@ const JsonParser = struct {
     source: std.ArrayList(u8),
     at: u64,
     hadError: u32,
+
+    pub fn getJsonToken(this: JsonParser) !JsonToken {
+        var result: JsonToken = undefined;
+        result.type = JsonTokenType.Token_error;
+
+        while (this.isWhiteSpace()) {
+            this.at += 1;
+        }
+
+        return result;
+    }
+
+    fn isWhiteSpace(this: JsonParser) bool {
+        if (this.at >= this.source.len) {
+            return false;
+        }
+
+        const val = this.source[this.at];
+        return val == ' ' or val == '\t' or val == '\n' or val == '\r';
+    }
+
+    //pub fn parseJsonElement(this: JsonParser, label: std.ArrayList(u8), value: JsonToken) !JsonElement {}
 };
 
 const JsonElement = struct {
@@ -29,6 +51,31 @@ const JsonValue = union(enum) {
     string: []const u8,
     array: []JsonValue,
     object: std.StringHashMap(JsonValue),
+};
+
+const JsonTokenType = enum {
+    Token_end_of_stream,
+    Token_error,
+
+    Token_open_brace,
+    Token_open_bracket,
+    Token_close_brace,
+    Token_close_bracket,
+    Token_comma,
+    Token_colon,
+    Token_semi_colon,
+    Token_string_literal,
+    Token_number,
+    Token_true,
+    Token_false,
+    Token_null,
+
+    Token_count,
+};
+
+const JsonToken = struct {
+    type: JsonTokenType,
+    value: std.ArrayList(u8),
 };
 
 pub fn parse(file: *std.fs.File) !JsonValue {
@@ -51,6 +98,10 @@ pub fn parse(file: *std.fs.File) !JsonValue {
 fn parseJSON(input: []u8) !JsonElement {
     var json_parser = JsonParser{};
     json_parser.source = input;
+
+    const json_token = json_parser.getJsonToken();
+    print("{s}\n", .{json_token});
+    //const result = json_parser.parseJsonElement(null, json_token);
 }
 
 pub fn parseHaversinePairs(input: []u8, parsed_values: std.ArrayList(HaversinePair)) !u64 {
