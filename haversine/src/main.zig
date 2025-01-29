@@ -34,21 +34,28 @@ pub fn main() !void {
 
     const inputJSON = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(inputJSON);
+
+    var inputJSONList = std.ArrayList(u8).init(allocator);
+    defer inputJSONList.deinit();
+
+    try inputJSONList.appendSlice(inputJSON);
+
     //std.debug.print("{s}\n", .{content});
 
     //TODO: casey ma tohle:
     //u32 MinimumJSONPairEncoding = 6*4;
     //u64 MaxPairCount = InputJSON.Count / MinimumJSONPairEncoding;
     //nechci zatim pouzivat, je to "optimalizace"
-    const parsed_values = std.ArrayList(zson.haversine_pair).init(allocator);
+    const parsed_values = std.ArrayList(zson.HaversinePair).init(allocator);
     defer parsed_values.deinit();
 
     //print("INPUT_JSON: {s}\n", .{inputJSON});
     print("parse_values: {}\n", .{parsed_values});
     print("LEN: {d}\n", .{inputJSON.len});
     const data = try zson.mock();
-    //const pairs_count = try zson.parseHaversinePairs(inputJSON, parsed_values);
+    const pairs_count = try zson.parseHaversinePairs(&inputJSONList, parsed_values);
     print("parsed_values: {}\n", .{parsed_values});
+    print("pairs_count: {}\n", .{pairs_count});
 
     //print("{}\n", .{pairs_count});
     print("****************************\n", .{});

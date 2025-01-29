@@ -10,27 +10,44 @@ pub const HaversinePair = struct {
 };
 
 const JsonParser = struct {
-    source: std.ArrayList(u8),
-    at: u64,
-    hadError: u32,
+    source: *std.ArrayList(u8),
+    at: u64 = 0,
+    hadError: u32 = 0,
+    allocator: std.mem.Allocator,
 
-    pub fn getJsonToken(this: JsonParser) !JsonToken {
-        var result: JsonToken = undefined;
-        result.type = JsonTokenType.Token_error;
+    pub fn init(allocator: std.mem.Allocator, input: *std.ArrayList(u8)) !JsonParser {
+        return JsonParser{
+            .allocator = allocator,
+            .source = input,
+            .at = 0,
+            .hadError = 0,
+        };
+    }
+
+    pub fn getJsonToken(this: *JsonParser) !JsonToken {
+        std.debug.print("INPUT: {c}\n", .{this.source.items[this.at]});
+        std.debug.print("AT: {d}\n", .{this.at});
+        const value = std.ArrayList(u8).init(this.allocator);
+        var result: JsonToken = JsonToken{ .type = JsonTokenType.Token_error, .value = value };
 
         while (this.isWhiteSpace()) {
             this.at += 1;
         }
 
+        if (this.at < this.source.items.len) {
+            try result.value.append(this.source.items[this.at]);
+        }
+
+        print("JSON_TOKEN: {}\n", .{result});
         return result;
     }
 
     fn isWhiteSpace(this: JsonParser) bool {
-        if (this.at >= this.source.len) {
+        if (this.at >= this.source.items.len) {
             return false;
         }
 
-        const val = this.source[this.at];
+        const val = this.source.items[this.at];
         return val == ' ' or val == '\t' or val == '\n' or val == '\r';
     }
 
@@ -95,22 +112,26 @@ pub fn parse(file: *std.fs.File) !JsonValue {
     return JsonValue{ .null = {} };
 }
 
-fn parseJSON(input: []u8) !JsonElement {
-    var json_parser = JsonParser{};
-    json_parser.source = input;
+fn parseJSON(input: *std.ArrayList(u8)) !void { // !JsonElement
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
 
-    const json_token = json_parser.getJsonToken();
-    print("{s}\n", .{json_token});
+    var json_parser = try JsonParser.init(allocator, input);
+
+    const json_token = try json_parser.getJsonToken();
+    print("{}\n", .{json_token});
+
     //const result = json_parser.parseJsonElement(null, json_token);
 }
 
-pub fn parseHaversinePairs(input: []u8, parsed_values: std.ArrayList(HaversinePair)) !u64 {
+pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: std.ArrayList(HaversinePair)) !u64 {
     //TODO: I need to initialize all the arraylists, figure out when and how
     var pair_count: u64 = 0;
     _ = parsed_values;
     pair_count += 1;
 
-    const JSON = parseJSON(input);
+    const JSON = try parseJSON(input);
+    std.debug.print("JSON: {}\n", .{JSON});
 
     return pair_count;
 }
