@@ -27,7 +27,7 @@ pub fn main() !void {
     //defer std.debug.print("LEAKS: {}\n", .{gpa.deinit()});
     const allocator = gpa.allocator();
 
-    var file = try std.fs.cwd().openFile("gen/pairs.json", .{});
+    var file = try std.fs.cwd().openFile("gen/test.json", .{}); // TODO: return gen/pairs.json
     const meta = try file.metadata();
     const file_size = meta.size();
     defer file.close();
@@ -50,15 +50,14 @@ pub fn main() !void {
     defer parsed_values.deinit();
 
     //print("INPUT_JSON: {s}\n", .{inputJSON});
-    print("parse_values: {}\n", .{parsed_values});
-    print("LEN: {d}\n", .{inputJSON.len});
+    //print("parse_values: {}\n", .{parsed_values});
+    //print("LEN: {d}\n", .{inputJSON.len});
     const data = try zson.mock();
-    const pairs_count = try zson.parseHaversinePairs(&inputJSONList, parsed_values);
-    print("parsed_values: {}\n", .{parsed_values});
-    print("pairs_count: {}\n", .{pairs_count});
+    _ = try zson.parseHaversinePairs(&inputJSONList, parsed_values);
+    //print("parsed_values: {}\n", .{parsed_values});
+    //print("pairs_count: {}\n", .{pairs_count});
 
     //print("{}\n", .{pairs_count});
-    print("****************************\n", .{});
 
     const mid_time = std.time.milliTimestamp();
 
@@ -66,13 +65,14 @@ pub fn main() !void {
     var count: i64 = 0;
 
     for (data.pairs) |pair| {
-        print("{d} {d} {d} {d}\n", pair);
+        //print("{d} {d} {d} {d}\n", pair);
         sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);
         count += 1;
     }
     const average = sum / @as(f64, @floatFromInt(count));
     const end_time = std.time.milliTimestamp();
 
+    print("****************************\n", .{});
     print("{d}\n", .{sum});
     print("{d}\n", .{count});
     print("{d}\n", .{average});

@@ -24,21 +24,92 @@ const JsonParser = struct {
         };
     }
 
+    fn ParseKeyword(this: *JsonParser, rest: []const u8, result: *JsonToken) !u64 {
+        const tokenstart = this.at;
+        this.at += 1;
+
+        if (rest.len > this.source.items.len - this.at) {
+            return error.KeywordTooShort;
+        }
+
+        const check = this.source.items[this.at .. this.at + rest.len];
+        if (!std.mem.eql(u8, check, rest)) {
+            return error.IncorrectKeyword;
+        }
+
+        result.type = tokentype;
+        result.value =
+            return this.at;
+    }
+
     pub fn getJsonToken(this: *JsonParser) !JsonToken {
-        std.debug.print("INPUT: {c}\n", .{this.source.items[this.at]});
-        std.debug.print("AT: {d}\n", .{this.at});
-        const value = std.ArrayList(u8).init(this.allocator);
-        var result: JsonToken = JsonToken{ .type = JsonTokenType.Token_error, .value = value };
+        var result: JsonToken = undefined;
+        //var value = std.ArrayList(u8).init(this.allocator);
+        //var result: JsonToken = JsonToken{ .type = JsonTokenType.Token_error, .value = &value };
 
         while (this.isWhiteSpace()) {
             this.at += 1;
         }
 
         if (this.at < this.source.items.len) {
-            try result.value.append(this.source.items[this.at]);
+            const start = this.at;
+            var end = this.at;
+            //result.value = this.source.items[this.at];
+            //try result.value.append(this.source.items[this.at]);
+
+            const val = this.source.items[this.at];
+            switch (val) {
+                '{' => {
+                    result.type = JsonTokenType.Token_open_brace;
+                    end = this.at + 1;
+                },
+                '}' => {
+                    result.type = JsonTokenType.Token_close_brace;
+                    end = this.at + 1;
+                },
+                '[' => {
+                    result.type = JsonTokenType.Token_open_bracket;
+                    end = this.at + 1;
+                },
+                ']' => {
+                    result.type = JsonTokenType.Token_close_bracket;
+                    end = this.at + 1;
+                },
+                ',' => {
+                    result.type = JsonTokenType.Token_comma;
+                    end = this.at + 1;
+                },
+                ':' => {
+                    result.type = JsonTokenType.Token_colon;
+                    end = this.at + 1;
+                },
+                ';' => {
+                    result.type = JsonTokenType.Token_semi_colon;
+                    end = this.at + 1;
+                },
+
+                'f' => {
+                    end = try this.ParseKeyword("alse", &result);
+                    result.type = JsonTokenType.Token_false;
+                },
+                't' => {
+                    result.type = JsonTokenType.Token_semi_colon;
+                    end = this.at + 1;
+                },
+                'n' => {
+                    result.type = JsonTokenType.Token_semi_colon;
+                    end = this.at + 1;
+                },
+
+                else => result.type = JsonTokenType.Token_error,
+            }
+
+            const tokenValue = this.source.items[start..end];
+            result.value = tokenValue;
         }
 
         print("JSON_TOKEN: {}\n", .{result});
+        print("JSON_TOKEN_VALUE: {s}\n", .{result.value});
         return result;
     }
 
@@ -92,7 +163,8 @@ const JsonTokenType = enum {
 
 const JsonToken = struct {
     type: JsonTokenType,
-    value: std.ArrayList(u8),
+    //value: *std.ArrayList(u8),
+    value: []const u8,
 };
 
 pub fn parse(file: *std.fs.File) !JsonValue {
