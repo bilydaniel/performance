@@ -24,7 +24,7 @@ const JsonParser = struct {
         };
     }
 
-    fn ParseKeyword(this: *JsonParser, rest: []const u8, result: *JsonToken) !u64 {
+    fn ParseKeyword(this: *JsonParser, rest: []const u8, result: *JsonToken, tokentype: JsonTokenType) !void {
         const tokenstart = this.at;
         this.at += 1;
 
@@ -37,9 +37,11 @@ const JsonParser = struct {
             return error.IncorrectKeyword;
         }
 
+        this.at += rest.len;
+        const tokenend = this.at;
+
         result.type = tokentype;
-        result.value =
-            return this.at;
+        result.value = this.source.items[tokenstart..tokenend];
     }
 
     pub fn getJsonToken(this: *JsonParser) !JsonToken {
@@ -52,8 +54,6 @@ const JsonParser = struct {
         }
 
         if (this.at < this.source.items.len) {
-            const start = this.at;
-            var end = this.at;
             //result.value = this.source.items[this.at];
             //try result.value.append(this.source.items[this.at]);
 
@@ -61,51 +61,70 @@ const JsonParser = struct {
             switch (val) {
                 '{' => {
                     result.type = JsonTokenType.Token_open_brace;
-                    end = this.at + 1;
                 },
                 '}' => {
                     result.type = JsonTokenType.Token_close_brace;
-                    end = this.at + 1;
                 },
                 '[' => {
                     result.type = JsonTokenType.Token_open_bracket;
-                    end = this.at + 1;
                 },
                 ']' => {
                     result.type = JsonTokenType.Token_close_bracket;
-                    end = this.at + 1;
                 },
                 ',' => {
                     result.type = JsonTokenType.Token_comma;
-                    end = this.at + 1;
                 },
                 ':' => {
                     result.type = JsonTokenType.Token_colon;
-                    end = this.at + 1;
                 },
                 ';' => {
                     result.type = JsonTokenType.Token_semi_colon;
-                    end = this.at + 1;
                 },
 
                 'f' => {
-                    end = try this.ParseKeyword("alse", &result);
-                    result.type = JsonTokenType.Token_false;
+                    try this.ParseKeyword("alse", &result, JsonTokenType.Token_false);
                 },
                 't' => {
-                    result.type = JsonTokenType.Token_semi_colon;
-                    end = this.at + 1;
+                    try this.ParseKeyword("rue", &result, JsonTokenType.Token_false);
                 },
                 'n' => {
-                    result.type = JsonTokenType.Token_semi_colon;
-                    end = this.at + 1;
+                    try this.ParseKeyword("ull", &result, JsonTokenType.Token_false);
                 },
 
+                '"' => {
+                    this.at += 1;
+                    result.type = JsonTokenType.Token_string_literal;
+                    const stringstart = this.at;
+
+                    while (this.at < this.source.items.len and this.source.items[this.at] != '"') {
+                        if ((this.at + 1 < this.source.items.len) and this.source.items[this.at] == '\\' and this.source.items[this.at + 1] == '"') {
+                            this.at += 1;
+                        }
+                        this.at += 1;
+                    }
+
+                    const stringend = this.at;
+                    result.value = this.source.items[stringstart..stringend];
+
+                    if (this.at < this.source.items.len) {
+                        this.at += 1;
+                    }
+                },
+
+                '-',
+                '0',
+                '1',
+                '2',
+                '3',
+                '4',
+                '5',
+                '6',
+                '7',
+                '8',
+                '9',
+                => {},
                 else => result.type = JsonTokenType.Token_error,
             }
-
-            const tokenValue = this.source.items[start..end];
-            result.value = tokenValue;
         }
 
         print("JSON_TOKEN: {}\n", .{result});
