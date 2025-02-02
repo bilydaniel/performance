@@ -71,24 +71,31 @@ const JsonParser = struct {
             switch (val) {
                 '{' => {
                     result.type = JsonTokenType.Token_open_brace;
+                    this.at += 1;
                 },
                 '}' => {
                     result.type = JsonTokenType.Token_close_brace;
+                    this.at += 1;
                 },
                 '[' => {
                     result.type = JsonTokenType.Token_open_bracket;
+                    this.at += 1;
                 },
                 ']' => {
                     result.type = JsonTokenType.Token_close_bracket;
+                    this.at += 1;
                 },
                 ',' => {
                     result.type = JsonTokenType.Token_comma;
+                    this.at += 1;
                 },
                 ':' => {
                     result.type = JsonTokenType.Token_colon;
+                    this.at += 1;
                 },
                 ';' => {
                     result.type = JsonTokenType.Token_semi_colon;
+                    this.at += 1;
                 },
 
                 'f' => {
@@ -205,7 +212,6 @@ const JsonParser = struct {
         while (this.isParsing()) {
             var val = this.getJsonToken();
             if (hasLabel) {
-                std.debug.print("DEBUG_VALUE: {}", .{val});
                 if (val.type == JsonTokenType.Token_string_literal) {
                     label = val.value;
                     const colon = this.getJsonToken();
@@ -334,10 +340,7 @@ pub fn parse(file: *std.fs.File) !JsonValue {
     return JsonValue{ .null = {} };
 }
 
-fn parseJSON(input: *std.ArrayList(u8)) !void { // !JsonElement
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-
+fn parseJSON(input: *std.ArrayList(u8), allocator: std.mem.Allocator) !?*JsonElement {
     var json_parser = try JsonParser.init(allocator, input);
 
     const json_token = json_parser.getJsonToken();
@@ -345,20 +348,103 @@ fn parseJSON(input: *std.ArrayList(u8)) !void { // !JsonElement
 
     const result = try json_parser.parseJsonElement("", json_token);
 
-    print("RESULT_JSON: {?}\n", .{result});
+    return result;
+}
+
+pub fn LookupElement(JSON: ?*JsonElement, name: []const u8) ?*JsonElement {
+    var result: ?*JsonElement = null;
+
+    if (JSON) |json| {
+        var search = json.firstSubElement;
+        while (search) |element| {
+            if (std.mem.eql(u8, element.label, name)) {
+                result = search;
+                break;
+            }
+            search = element.nextSibling;
+        }
+    }
+    return result;
+}
+
+pub fn ConvertSign(source: []const u8, at: *u64) f64 {
+    var result = 1.0;
+
+    if (at.* < source.len and source[at.*] == '-') {
+        result = -1.0;
+        at.* += 1;
+    }
+    return result;
+}
+
+pub fn ConvertNumber(source: []const u8, at: *u64) f64 {
+    var result = 0.0;
+
+    while (at.* < source.len) {
+        const char = source[at.*];
+        if (char < 10) {
+            result = 10.0 * result + @as(f64, @floatFromInt(char));
+            at.* += 1;
+        } else {
+            break;
+        }
+    }
+    return result;
+}
+
+pub fn ConvertElementToF64(element: JsonElement, name: []const u8) f64 {
+    var result: f64 = 0;
+
+    const innerElement = LookupElement(element, name);
+    if (innerElement) |inn| {
+        const source = inn.value;
+        var at: u64 = 0;
+
+        const sign = ConvertSign(source, &at);
+        const numer = ConvertNumber(source, &at);
+        //TODO: FINISH THIS BRUH
+    }
+    return result;
 }
 
 pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: std.ArrayList(HaversinePair)) !u64 {
     var pair_count: u64 = 0;
-    _ = parsed_values;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
     pair_count += 1;
 
-    const JSON = try parseJSON(input);
-    std.debug.print("JSON: {}\n", .{JSON});
+    const JSON = try parseJSON(input, allocator);
+    defer FreeJson(JSON, allocator);
+    std.debug.print("JSON: {?}\n", .{JSON});
 
-    const pairsArray 
+    const pairsArray = LookupElement(JSON, "pairs");
+    if (pairsArray) |pairs| {
+        var element = pairs.firstSubElement;
+        while (element) |e| : (element = e.nextSibling) {
+            const pair = Pair{
+                .x0 = ConvertElementToF64(e, "x0"),
+                .y0 = ConvertElementToF64(e, "y0"),
+                .x1 = ConvertElementToF64(e, "x1"),
+                .y1 = ConvertElementToF64(e, "y1"),
+            };
+
+            parsed_values.append(pair);
+        }
+    }
+
+    std.debug.print("PAIRS: {}\n", .{parsed_values});
 
     return pair_count;
+}
+
+pub fn FreeJson(JSON: ?*JsonElement, allocator: std.mem.Allocator) void {
+    while (JSON) |json| {
+        const freeElement = json;
+        JSON = json.nextSibling;
+
+        FreeJson(freeElement.firstSubElement);
+        allocator.free(freeElement);
+    }
 }
 
 const Pair = struct {
