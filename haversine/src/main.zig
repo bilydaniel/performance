@@ -27,7 +27,7 @@ pub fn main() !void {
     //defer std.debug.print("LEAKS: {}\n", .{gpa.deinit()});
     const allocator = gpa.allocator();
 
-    var file = try std.fs.cwd().openFile("gen/test.json", .{}); // TODO: return gen/pairs.json
+    var file = try std.fs.cwd().openFile("gen/pairs.json", .{});
     const meta = try file.metadata();
     const file_size = meta.size();
     defer file.close();
@@ -46,14 +46,14 @@ pub fn main() !void {
     //u32 MinimumJSONPairEncoding = 6*4;
     //u64 MaxPairCount = InputJSON.Count / MinimumJSONPairEncoding;
     //nechci zatim pouzivat, je to "optimalizace"
-    const parsed_values = std.ArrayList(zson.HaversinePair).init(allocator);
+    var parsed_values = std.ArrayList(zson.HaversinePair).init(allocator);
     defer parsed_values.deinit();
 
     //print("INPUT_JSON: {s}\n", .{inputJSON});
     //print("parse_values: {}\n", .{parsed_values});
     //print("LEN: {d}\n", .{inputJSON.len});
     const data = try zson.mock();
-    _ = try zson.parseHaversinePairs(&inputJSONList, parsed_values);
+    _ = try zson.parseHaversinePairs(&inputJSONList, &parsed_values);
     //print("parsed_values: {}\n", .{parsed_values});
     //print("pairs_count: {}\n", .{pairs_count});
 

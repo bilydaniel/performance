@@ -323,28 +323,10 @@ const JsonToken = struct {
     value: []const u8,
 };
 
-pub fn parse(file: *std.fs.File) !JsonValue {
-    try file.seekTo(0);
-    var char: u8 = undefined;
-    while (true) {
-        char = file.reader().readByte() catch |err| {
-            print("READING ERROR: {}\n", .{err});
-            break;
-        };
-        //print("{}\n", .{char});
-    }
-    print("{}", .{file});
-    const value = JsonValue{ .null = {} };
-    print("{}", .{value});
-
-    return JsonValue{ .null = {} };
-}
-
 fn parseJSON(input: *std.ArrayList(u8), allocator: std.mem.Allocator) !?*JsonElement {
     var json_parser = try JsonParser.init(allocator, input);
 
     const json_token = json_parser.getJsonToken();
-    //print("{}\n", .{json_token});
 
     const result = try json_parser.parseJsonElement("", json_token);
 
@@ -368,7 +350,7 @@ pub fn LookupElement(JSON: ?*JsonElement, name: []const u8) ?*JsonElement {
 }
 
 pub fn ConvertSign(source: []const u8, at: *u64) f64 {
-    var result = 1.0;
+    var result: f64 = 1.0;
 
     if (at.* < source.len and source[at.*] == '-') {
         result = -1.0;
@@ -378,12 +360,14 @@ pub fn ConvertSign(source: []const u8, at: *u64) f64 {
 }
 
 pub fn ConvertNumber(source: []const u8, at: *u64) f64 {
-    var result = 0.0;
+    var result: f64 = 0.0;
 
     while (at.* < source.len) {
         const char = source[at.*];
+        //breaks if . or e
         if (char < 10) {
-            result = 10.0 * result + @as(f64, @floatFromInt(char));
+            const val = source[at.*] - @as(u8, '0');
+            result = 10.0 * result + @as(f64, @floatFromInt(val));
             at.* += 1;
         } else {
             break;
@@ -392,7 +376,7 @@ pub fn ConvertNumber(source: []const u8, at: *u64) f64 {
     return result;
 }
 
-pub fn ConvertElementToF64(element: JsonElement, name: []const u8) f64 {
+pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
     var result: f64 = 0;
 
     const innerElement = LookupElement(element, name);
@@ -401,13 +385,43 @@ pub fn ConvertElementToF64(element: JsonElement, name: []const u8) f64 {
         var at: u64 = 0;
 
         const sign = ConvertSign(source, &at);
-        const numer = ConvertNumber(source, &at);
-        //TODO: FINISH THIS BRUH
+        var number = ConvertNumber(source, &at);
+
+        if (at < source.len and source[at] == '.') {
+            at += 1;
+            var C: f64 = 1.0 / 10.0;
+            while (at < source.len) {
+                const char = source[at] - '0';
+                //breaks if . or e
+                if (char < 10) {
+                    number = number + C * @as(f64, @floatFromInt(char));
+                    C *= 1.0 / 10.0;
+                    at += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if (at < source.len and (source[at] == 'e' or source[at] == 'E')) {
+            at += 1;
+
+            if (at < source.len and source[at] == '+') {
+                at += 1;
+            }
+
+            const Esign = ConvertSign(source, &at);
+            const Enumber = ConvertNumber(source, &at);
+            const E = Esign * Enumber;
+            number *= std.math.pow(f64, 10, E);
+        }
+
+        result = sign * number;
     }
     return result;
 }
 
-pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: std.ArrayList(HaversinePair)) !u64 {
+pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayList(HaversinePair)) !u64 {
     var pair_count: u64 = 0;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -415,35 +429,33 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: std.ArrayLi
 
     const JSON = try parseJSON(input, allocator);
     defer FreeJson(JSON, allocator);
-    std.debug.print("JSON: {?}\n", .{JSON});
 
     const pairsArray = LookupElement(JSON, "pairs");
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
         while (element) |e| : (element = e.nextSibling) {
-            const pair = Pair{
+            const pair = HaversinePair{
                 .x0 = ConvertElementToF64(e, "x0"),
                 .y0 = ConvertElementToF64(e, "y0"),
                 .x1 = ConvertElementToF64(e, "x1"),
                 .y1 = ConvertElementToF64(e, "y1"),
             };
 
-            parsed_values.append(pair);
+            try parsed_values.append(pair);
         }
     }
-
-    std.debug.print("PAIRS: {}\n", .{parsed_values});
+    std.debug.print("PARSED_VALUES: {}", .{parsed_values});
 
     return pair_count;
 }
 
 pub fn FreeJson(JSON: ?*JsonElement, allocator: std.mem.Allocator) void {
-    while (JSON) |json| {
-        const freeElement = json;
-        JSON = json.nextSibling;
+    var json = JSON;
+    while (json) |j| {
+        json = j.nextSibling;
 
-        FreeJson(freeElement.firstSubElement);
-        allocator.free(freeElement);
+        FreeJson(j.firstSubElement, allocator);
+        allocator.destroy(j);
     }
 }
 
@@ -456,10 +468,6 @@ const Pair = struct {
 const Data = struct {
     pairs: []const Pair,
 };
-pub fn asd() i64 {
-    std.debug.print("{}\n", .{69});
-    return 42;
-}
 
 pub fn mock() !Data {
     const data = Data{
