@@ -52,7 +52,7 @@ pub fn main() !void {
     //print("INPUT_JSON: {s}\n", .{inputJSON});
     //print("parse_values: {}\n", .{parsed_values});
     //print("LEN: {d}\n", .{inputJSON.len});
-    const data = try zson.mock();
+    //const data = try zson.mock();
     _ = try zson.parseHaversinePairs(&inputJSONList, &parsed_values);
     //print("parsed_values: {}\n", .{parsed_values});
     //print("pairs_count: {}\n", .{pairs_count});
@@ -64,7 +64,7 @@ pub fn main() !void {
     var sum: f64 = 0;
     var count: i64 = 0;
 
-    for (data.pairs) |pair| {
+    for (parsed_values.items) |pair| {
         //print("{d} {d} {d} {d}\n", pair);
         sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);
         count += 1;
@@ -73,10 +73,10 @@ pub fn main() !void {
     const end_time = std.time.milliTimestamp();
 
     print("****************************\n", .{});
-    print("{d}\n", .{sum});
-    print("{d}\n", .{count});
-    print("{d}\n", .{average});
-    print("{d}\n", .{start_time});
-    print("{d}\n", .{mid_time});
-    print("{d}\n", .{end_time});
+    print("sum: {d}\n", .{sum});
+    print("count: {d}\n", .{count});
+    print("average: {d}\n", .{average});
+    print("start_time: {d}\n", .{start_time});
+    print("mid_time: {d}\n", .{mid_time});
+    print("end_time: {d}\n", .{end_time});
 }

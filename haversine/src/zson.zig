@@ -147,6 +147,10 @@ const JsonParser = struct {
                         this.at += 1;
                     }
 
+                    if (val == '0') {
+                        this.at += 1;
+                    }
+
                     if (val != '0') {
                         while (this.IsJsonDigit()) {
                             this.at += 1;
@@ -201,7 +205,7 @@ const JsonParser = struct {
 
     pub fn Error(this: *@This(), token: JsonToken, msg: []const u8) void {
         this.hadError = true;
-        std.debug.print("ERROR: parser: {}, token:{}, msg:{s}\n", .{ this, token, msg });
+        std.debug.print("ERROR: parser: {}, token:{}, msg:{s}\n", .{ this.at, token, msg });
     }
 
     pub fn parseJsonList(this: *@This(), endtoken: JsonTokenType, hasLabel: bool) JsonParseError!?*JsonElement {
@@ -340,7 +344,7 @@ pub fn LookupElement(JSON: ?*JsonElement, name: []const u8) ?*JsonElement {
         var search = json.firstSubElement;
         while (search) |element| {
             if (std.mem.eql(u8, element.label, name)) {
-                result = search;
+                result = element;
                 break;
             }
             search = element.nextSibling;
@@ -364,9 +368,12 @@ pub fn ConvertNumber(source: []const u8, at: *u64) f64 {
 
     while (at.* < source.len) {
         const char = source[at.*];
+        if (char == '.' or char == 'e') {
+            break;
+        }
+        const val = source[at.*] - @as(u8, '0');
         //breaks if . or e
-        if (char < 10) {
-            const val = source[at.*] - @as(u8, '0');
+        if (val < 10) {
             result = 10.0 * result + @as(f64, @floatFromInt(val));
             at.* += 1;
         } else {
@@ -380,20 +387,25 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
     var result: f64 = 0;
 
     const innerElement = LookupElement(element, name);
+
     if (innerElement) |inn| {
         const source = inn.value;
         var at: u64 = 0;
 
-        const sign = ConvertSign(source, &at);
-        var number = ConvertNumber(source, &at);
+        const sign: f64 = ConvertSign(source, &at);
+        var number: f64 = ConvertNumber(source, &at);
 
         if (at < source.len and source[at] == '.') {
             at += 1;
             var C: f64 = 1.0 / 10.0;
             while (at < source.len) {
-                const char = source[at] - '0';
+                const char = source[at.*];
+                if (char == '.' or char == 'e') {
+                    break;
+                }
+                const val = source[at.*] - @as(u8, '0');
                 //breaks if . or e
-                if (char < 10) {
+                if (val < 10) {
                     number = number + C * @as(f64, @floatFromInt(char));
                     C *= 1.0 / 10.0;
                     at += 1;
@@ -425,7 +437,6 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
     var pair_count: u64 = 0;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    pair_count += 1;
 
     const JSON = try parseJSON(input, allocator);
     defer FreeJson(JSON, allocator);
@@ -434,6 +445,7 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
         while (element) |e| : (element = e.nextSibling) {
+            pair_count += 1;
             const pair = HaversinePair{
                 .x0 = ConvertElementToF64(e, "x0"),
                 .y0 = ConvertElementToF64(e, "y0"),
@@ -444,7 +456,7 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
             try parsed_values.append(pair);
         }
     }
-    std.debug.print("PARSED_VALUES: {}", .{parsed_values});
+    std.debug.print("PARSED_VALUES: {}\n", .{parsed_values.items[0]});
 
     return pair_count;
 }
