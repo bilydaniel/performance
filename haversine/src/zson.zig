@@ -399,11 +399,11 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
             at += 1;
             var C: f64 = 1.0 / 10.0;
             while (at < source.len) {
-                const char = source[at.*];
+                const char = source[at];
                 if (char == '.' or char == 'e') {
                     break;
                 }
-                const val = source[at.*] - @as(u8, '0');
+                const val = source[at] - @as(u8, '0');
                 //breaks if . or e
                 if (val < 10) {
                     number = number + C * @as(f64, @floatFromInt(char));

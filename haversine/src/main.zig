@@ -1,5 +1,6 @@
 const std = @import("std");
 const zson = @import("zson.zig");
+const profiling = @import("profiling.zig");
 
 const print = std.debug.print;
 const math = std.math;
@@ -21,12 +22,29 @@ fn haversine(x0: f64, y0: f64, x1: f64, y1: f64, radius: f64) f64 {
     return result;
 }
 
+pub fn PrintTimeElapsed(label: []const u8, total: u64, begin: u64, end: u64) void {
+    const elapsed = end - begin;
+    const percent = 100.0 * (@as(f64, @floatFromInt(elapsed)) / @as(f64, @floatFromInt(total)));
+    print("{s}: {d} ({d:.2}%)\n", .{ label, elapsed, percent });
+}
+
 pub fn main() !void {
+    var Prof_Begin: u64 = 0;
+    var Prof_Read: u64 = 0;
+    var Prof_MiscSetup: u64 = 0;
+    var Prof_Parse: u64 = 0;
+    var Prof_Sum: u64 = 0;
+    var Prof_MiscOutput: u64 = 0;
+    var Prof_End: u64 = 0;
+
+    Prof_Begin = profiling.ReadCPUTimer();
+
     const start_time = std.time.milliTimestamp();
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     //defer std.debug.print("LEAKS: {}\n", .{gpa.deinit()});
     const allocator = gpa.allocator();
 
+    Prof_Read = profiling.ReadCPUTimer();
     var file = try std.fs.cwd().openFile("gen/pairs.json", .{});
     const meta = try file.metadata();
     const file_size = meta.size();
@@ -34,6 +52,7 @@ pub fn main() !void {
 
     const inputJSON = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(inputJSON);
+    Prof_MiscSetup = profiling.ReadCPUTimer();
 
     var inputJSONList = std.ArrayList(u8).init(allocator);
     defer inputJSONList.deinit();
@@ -53,7 +72,9 @@ pub fn main() !void {
     //print("parse_values: {}\n", .{parsed_values});
     //print("LEN: {d}\n", .{inputJSON.len});
     //const data = try zson.mock();
+    Prof_Parse = profiling.ReadCPUTimer();
     _ = try zson.parseHaversinePairs(&inputJSONList, &parsed_values);
+    Prof_Sum = profiling.ReadCPUTimer();
     //print("parsed_values: {}\n", .{parsed_values});
     //print("pairs_count: {}\n", .{pairs_count});
 
@@ -69,8 +90,17 @@ pub fn main() !void {
         sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);
         count += 1;
     }
+    Prof_MiscOutput = profiling.ReadCPUTimer();
     const average = sum / @as(f64, @floatFromInt(count));
     const end_time = std.time.milliTimestamp();
+    Prof_End = profiling.ReadCPUTimer();
+    const TotalCPUElapsed = Prof_End - Prof_Begin;
+
+    const cpuFreq = profiling.EstimateCPUTimerFreq();
+    if (cpuFreq != 0) {
+        const time = 1000.0 * @as(f64, @floatFromInt(TotalCPUElapsed)) / @as(f64, @floatFromInt(cpuFreq));
+        std.debug.print("\nTotal time: {d:.4}ms (CPU freq {d} Hz)\n", .{ time, cpuFreq });
+    }
 
     print("****************************\n", .{});
     print("sum: {d}\n", .{sum});
@@ -79,4 +109,11 @@ pub fn main() !void {
     print("start_time: {d}\n", .{start_time});
     print("mid_time: {d}\n", .{mid_time});
     print("end_time: {d}\n", .{end_time});
+
+    PrintTimeElapsed("Startup", TotalCPUElapsed, Prof_Begin, Prof_Read);
+    PrintTimeElapsed("Read", TotalCPUElapsed, Prof_Read, Prof_MiscSetup);
+    PrintTimeElapsed("MiscSetup", TotalCPUElapsed, Prof_MiscSetup, Prof_Parse);
+    PrintTimeElapsed("Parse", TotalCPUElapsed, Prof_Parse, Prof_Sum);
+    PrintTimeElapsed("Sum", TotalCPUElapsed, Prof_Sum, Prof_MiscOutput);
+    PrintTimeElapsed("MiscOutput", TotalCPUElapsed, Prof_MiscOutput, Prof_End);
 }
