@@ -2,6 +2,15 @@ const std = @import("std");
 const Profiling = @import("profiling.zig");
 
 var profiler = Profiler{};
+var counter: u64 = 0;
+
+pub fn TimeBlock(name: []const u8) void {
+    std.debug.print("{s}", .{name});
+}
+pub fn TimeFunction() void {
+    const info = @src();
+    TimeBlock(info.fn_name);
+}
 
 const Profiler = struct {
     Anchors: [4096]Anchor,
@@ -27,6 +36,15 @@ const Profiler = struct {
                 anchor.PrintTimeElapsed(totalElapsed);
             }
         }
+    }
+
+    pub fn BlockStart(this: *Profiler, name: []const u8) void {}
+    pub fn BlockEnd(this: *Profiler, name: []const u8) void {}
+    pub fn FunctionStart(this: *Profiler) void {
+        const info = @src();
+    }
+    pub fn FunctionEnd(this: *Profiler) void {
+        const info = @src();
     }
 };
 
