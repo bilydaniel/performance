@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("profiler.zig");
 
 const print = std.debug.print;
 
@@ -51,6 +52,8 @@ const JsonParser = struct {
     fn IsJsonDigit(this: *JsonParser) bool {
         var result = false;
 
+        const block3 = Profiler.TimeBlock("test", @src());
+        block3.end();
         if (this.at < this.source.items.len) {
             const val = this.source.items[this.at];
             result = (val >= '0' and val <= '9');
@@ -434,6 +437,7 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
 }
 
 pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayList(HaversinePair)) !u64 {
+    const block_2 = Profiler.TimeFunction(@src());
     var pair_count: u64 = 0;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -458,6 +462,7 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
     }
     std.debug.print("PARSED_VALUES: {}\n", .{parsed_values.items[0]});
 
+    block_2.end();
     return pair_count;
 }
 

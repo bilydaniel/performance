@@ -1,6 +1,7 @@
 const std = @import("std");
 const zson = @import("zson.zig");
 const profiling = @import("profiling.zig");
+const Profiler = @import("profiler.zig");
 
 const print = std.debug.print;
 const math = std.math;
@@ -37,6 +38,13 @@ pub fn main() !void {
     var Prof_MiscOutput: u64 = 0;
     var Prof_End: u64 = 0;
 
+    Profiler.BeginProfile();
+    const block = Profiler.TimeBlock("BLOCK 1", @src());
+    block.end();
+
+    const block_2 = Profiler.TimeFunction(@src());
+    block_2.end();
+
     Prof_Begin = profiling.ReadCPUTimer();
 
     const start_time = std.time.milliTimestamp();
@@ -49,6 +57,9 @@ pub fn main() !void {
     const meta = try file.metadata();
     const file_size = meta.size();
     defer file.close();
+
+    const block3 = Profiler.TimeBlock("test", @src());
+    block3.end();
 
     const inputJSON = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(inputJSON);
@@ -73,7 +84,9 @@ pub fn main() !void {
     //print("LEN: {d}\n", .{inputJSON.len});
     //const data = try zson.mock();
     Prof_Parse = profiling.ReadCPUTimer();
+    const parseProfile = Profiler.TimeBlock("parseProfile", @src());
     _ = try zson.parseHaversinePairs(&inputJSONList, &parsed_values);
+    parseProfile.end();
     Prof_Sum = profiling.ReadCPUTimer();
     //print("parsed_values: {}\n", .{parsed_values});
     //print("pairs_count: {}\n", .{pairs_count});
@@ -93,6 +106,7 @@ pub fn main() !void {
     Prof_MiscOutput = profiling.ReadCPUTimer();
     const average = sum / @as(f64, @floatFromInt(count));
     const end_time = std.time.milliTimestamp();
+    Profiler.EndProfile();
     Prof_End = profiling.ReadCPUTimer();
     const TotalCPUElapsed = Prof_End - Prof_Begin;
 
