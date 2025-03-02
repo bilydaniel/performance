@@ -40,10 +40,6 @@ pub fn main() !void {
 
     Profiler.BeginProfile();
     const block = Profiler.TimeBlock("BLOCK 1", @src());
-    block.end();
-
-    const block_2 = Profiler.TimeFunction(@src());
-    block_2.end();
 
     Prof_Begin = profiling.ReadCPUTimer();
 
@@ -57,9 +53,6 @@ pub fn main() !void {
     const meta = try file.metadata();
     const file_size = meta.size();
     defer file.close();
-
-    const block3 = Profiler.TimeBlock("test", @src());
-    block3.end();
 
     const inputJSON = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(inputJSON);
@@ -93,6 +86,7 @@ pub fn main() !void {
 
     //print("{}\n", .{pairs_count});
 
+    block.end();
     const mid_time = std.time.milliTimestamp();
 
     var sum: f64 = 0;

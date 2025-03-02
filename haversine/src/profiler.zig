@@ -33,7 +33,7 @@ pub fn EndProfile() void {
         std.debug.print("Total time: {d:.4}ms ({d})\n", .{ 1000 * @as(f64, @floatFromInt(totalElapsed)) / @as(f64, @floatFromInt(cpufreq)), cpufreq });
     }
     for (profiler.Anchors) |anchor| {
-        if (anchor.TSCElapsed > 0) {
+        if (anchor.TSCElapsedInclusive > 0) {
             anchor.PrintTimeElapsed(totalElapsed);
         }
     }
@@ -70,14 +70,18 @@ const Profiler = struct {
 };
 
 const Anchor = struct {
-    TSCElapsed: u64,
-    TSCElapsedChildren: u64,
+    TSCElapsedExclusive: u64,
+    TSCElapsedInclusive: u64,
     HitCount: u64,
     Label: []const u8,
 
     pub fn PrintTimeElapsed(this: Anchor, totalElapsed: u64) void {
-        const percent = 100 * @as(f64, @floatFromInt(this.TSCElapsed)) / @as(f64, @floatFromInt(totalElapsed));
-        std.debug.print("   {s}[{d}]: {d}({d}%)\n", .{ this.Label, this.HitCount, this.TSCElapsed, percent });
+        const percent = 100 * @as(f64, @floatFromInt(this.TSCElapsedExclusive)) / @as(f64, @floatFromInt(totalElapsed));
+        std.debug.print("   {s}[{d}]: {d}({d}%)\n", .{ this.Label, this.HitCount, this.TSCElapsedExclusive, percent });
+        if (this.TSCElapsedExclusive != this.TSCElapsedInclusive) {
+            const percentInclusive = 100 * @as(f64, @floatFromInt(this.TSCElapsedInclusive)) / @as(f64, @floatFromInt(totalElapsed));
+            std.debug.print(",({d}%) with children", .{percentInclusive});
+        }
     }
 };
 
@@ -86,14 +90,19 @@ const Block = struct {
     StartTSC: u64,
     ParentIndex: u32,
     AnchorIndex: u32,
+    OldTSCElapsedInclusive: u64,
 
     pub fn start(label: []const u8, anchor_index: u32) Block {
-        return Block{
-            .Label = label,
-            .StartTSC = Profiling.ReadCPUTimer(),
+        const anchor = profiler.Anchors[anchor_index];
+        const block = Block{
             .ParentIndex = parent,
             .AnchorIndex = anchor_index,
+            .Label = label,
+            .StartTSC = Profiling.ReadCPUTimer(),
+            .OldTSCElapsedInclusive = anchor.TSCElapsedInclusive,
         };
+        parent = anchor_index;
+        return block;
     }
 
     pub fn end(this: Block) void {
@@ -102,9 +111,11 @@ const Block = struct {
 
         var parentAnchor = &profiler.Anchors[this.ParentIndex];
         var anchor = &profiler.Anchors[this.AnchorIndex];
-
-        parentAnchor.TSCElapsedChildren += elapsed;
-        anchor.TSCElapsed += elapsed;
+        if (parentAnchor.TSCElapsedExclusive > 0) {
+            parentAnchor.TSCElapsedExclusive -= elapsed;
+        }
+        anchor.TSCElapsedExclusive += elapsed;
+        anchor.TSCElapsedInclusive = this.OldTSCElapsedInclusive + elapsed;
         anchor.HitCount += 1;
         anchor.Label = this.Label; //TODO: no idea why
     }
