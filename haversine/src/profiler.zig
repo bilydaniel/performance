@@ -3,13 +3,68 @@ const Profiling = @import("profiling.zig");
 
 pub var profiler: Profiler = undefined;
 var parent: u32 = 0;
+var counter: u32 = 1;
 
-pub fn TimeBlock(name: []const u8, src: std.builtin.SourceLocation) Block {
+pub var map: std.StringHashMap(u32) = undefined;
+
+pub fn TimeBlock(name: []const u8, src: std.builtin.SourceLocation) !Block {
+    var AnchorIndex: u32 = 0;
     const line = src.line;
-    const counter = lineToCounter(line);
-    return Block.start(name, counter);
+    var buffer: [64]u8 = undefined;
+    const key = std.fmt.bufPrint(&buffer, "{s}:{d}", .{ src.file, line }) catch "invalid";
+    std.debug.print("KEY: {s}\n", .{key});
+    std.debug.print("MAP: {?}\n", .{map.get(key)});
+
+    if (map.get(key)) |value| {
+        std.debug.print("GET\n", .{});
+        AnchorIndex = value;
+    } else {
+        AnchorIndex = map.count() + 1;
+        std.debug.print("PUT {s}:{d}\n", .{ key, AnchorIndex });
+        map.put(key, AnchorIndex) catch {};
+    }
+
+    return Block.start(name, AnchorIndex);
 }
-pub fn TimeFunction(src: std.builtin.SourceLocation) Block {
+
+pub fn TimeBlock(name: []const u8, src: std.builtin.SourceLocation) !Block {
+    var AnchorIndex: u32 = 0;
+
+    // Create a hash of the file and line
+    var hasher = std.hash.Wyhash.init(0);
+
+    // Hash the file path
+    hasher.update(src.file);
+
+    // Hash a separator to avoid collisions
+    hasher.update(":");
+
+    // Convert line number to string and hash it
+    var line_buf: [16]u8 = undefined;
+    const line_str = std.fmt.bufPrint(&line_buf, "{d}", .{src.line}) catch unreachable;
+    hasher.update(line_str);
+
+    // Get the final hash value to use as key
+    const key_hash = hasher.final();
+
+    // Debug output
+    if (debug_output) {
+        // Optional: Print the original info
+        std.debug.print("Source: {s}:{d} -> Hash: {x}\n", .{ src.file, src.line, key_hash });
+    }
+
+    // Check the map using the hash as the key
+    if (map.get(key_hash)) |value| {
+        AnchorIndex = value;
+    } else {
+        AnchorIndex = @intCast(u32, map.count() + 1);
+        try map.put(key_hash, AnchorIndex);
+    }
+
+    return Block.start(name, AnchorIndex);
+}
+
+pub fn TimeFunction(src: std.builtin.SourceLocation) !Block {
     return TimeBlock(src.fn_name, src);
 }
 
@@ -20,11 +75,11 @@ pub fn BeginProfile() void {
         .Anchors = std.mem.zeroes([4096]Anchor),
     };
 
-    profiler.StartTSC = Profiling.ReadCPUTimer();
+    profiler.StartTSC = @intCast(Profiling.ReadCPUTimer());
 }
 
 pub fn EndProfile() void {
-    profiler.EndTSC = Profiling.ReadCPUTimer();
+    profiler.EndTSC = @intCast(Profiling.ReadCPUTimer());
     const cpufreq = Profiling.EstimateCPUTimerFreq();
 
     const totalElapsed = profiler.EndTSC - profiler.StartTSC;
@@ -39,25 +94,10 @@ pub fn EndProfile() void {
     }
 }
 
-var seen: [100]u32 = undefined;
-var seen_count: u32 = 0;
-
-fn lineToCounter(line: u32) u32 {
-    var i: u32 = 0;
-    while (i < seen_count) : (i += 1) {
-        if (seen[i] == line) return i;
-    }
-
-    seen[seen_count] = line;
-    const saved_line = seen_count;
-    seen_count += 1;
-    return saved_line;
-}
-
 const Profiler = struct {
     Anchors: [4096]Anchor,
-    StartTSC: u64,
-    EndTSC: u64,
+    StartTSC: i64,
+    EndTSC: i64,
 
     //pub fn BlockStart(this: *Profiler, name: []const u8) void {}
     //pub fn BlockEnd(this: *Profiler, name: []const u8) void {}
@@ -70,27 +110,29 @@ const Profiler = struct {
 };
 
 const Anchor = struct {
-    TSCElapsedExclusive: u64,
-    TSCElapsedInclusive: u64,
+    TSCElapsedExclusive: i64,
+    TSCElapsedInclusive: i64,
     HitCount: u64,
     Label: []const u8,
 
-    pub fn PrintTimeElapsed(this: Anchor, totalElapsed: u64) void {
+    pub fn PrintTimeElapsed(this: Anchor, totalElapsed: i64) void {
         const percent = 100 * @as(f64, @floatFromInt(this.TSCElapsedExclusive)) / @as(f64, @floatFromInt(totalElapsed));
         std.debug.print("   {s}[{d}]: {d}({d}%)\n", .{ this.Label, this.HitCount, this.TSCElapsedExclusive, percent });
+        std.debug.print("ex: {d} in: {d}\n", .{ this.TSCElapsedExclusive, this.TSCElapsedInclusive });
+
         if (this.TSCElapsedExclusive != this.TSCElapsedInclusive) {
             const percentInclusive = 100 * @as(f64, @floatFromInt(this.TSCElapsedInclusive)) / @as(f64, @floatFromInt(totalElapsed));
-            std.debug.print(",({d}%) with children", .{percentInclusive});
+            std.debug.print(",({d}%) with children\n", .{percentInclusive});
         }
     }
 };
 
 const Block = struct {
     Label: []const u8,
-    StartTSC: u64,
+    StartTSC: i64,
     ParentIndex: u32,
     AnchorIndex: u32,
-    OldTSCElapsedInclusive: u64,
+    OldTSCElapsedInclusive: i64,
 
     pub fn start(label: []const u8, anchor_index: u32) Block {
         const anchor = profiler.Anchors[anchor_index];
@@ -98,7 +140,7 @@ const Block = struct {
             .ParentIndex = parent,
             .AnchorIndex = anchor_index,
             .Label = label,
-            .StartTSC = Profiling.ReadCPUTimer(),
+            .StartTSC = @intCast(Profiling.ReadCPUTimer()),
             .OldTSCElapsedInclusive = anchor.TSCElapsedInclusive,
         };
         parent = anchor_index;
@@ -106,14 +148,12 @@ const Block = struct {
     }
 
     pub fn end(this: Block) void {
-        const elapsed = Profiling.ReadCPUTimer() - this.StartTSC;
+        const elapsed: i64 = @as(i64, @intCast(Profiling.ReadCPUTimer())) - this.StartTSC;
         parent = this.ParentIndex;
 
         var parentAnchor = &profiler.Anchors[this.ParentIndex];
         var anchor = &profiler.Anchors[this.AnchorIndex];
-        if (parentAnchor.TSCElapsedExclusive > 0) {
-            parentAnchor.TSCElapsedExclusive -= elapsed;
-        }
+        parentAnchor.TSCElapsedExclusive -= elapsed;
         anchor.TSCElapsedExclusive += elapsed;
         anchor.TSCElapsedInclusive = this.OldTSCElapsedInclusive + elapsed;
         anchor.HitCount += 1;

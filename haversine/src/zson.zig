@@ -52,8 +52,6 @@ const JsonParser = struct {
     fn IsJsonDigit(this: *JsonParser) bool {
         var result = false;
 
-        const block3 = Profiler.TimeBlock("test", @src());
-        block3.end();
         if (this.at < this.source.items.len) {
             const val = this.source.items[this.at];
             result = (val >= '0' and val <= '9');
@@ -258,6 +256,7 @@ const JsonParser = struct {
     }
 
     pub fn parseJsonElement(this: *@This(), label: []const u8, value: JsonToken) JsonParseError!?*JsonElement {
+        const prof_parse = try Profiler.TimeFunction(@src());
         var valid = true;
 
         var subElement: ?*JsonElement = null;
@@ -285,6 +284,7 @@ const JsonParser = struct {
             result.?.nextSibling = null;
         }
 
+        prof_parse.end();
         return result;
     }
 };
@@ -437,7 +437,6 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
 }
 
 pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayList(HaversinePair)) !u64 {
-    const block_2 = Profiler.TimeFunction(@src());
     var pair_count: u64 = 0;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -449,6 +448,7 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
         while (element) |e| : (element = e.nextSibling) {
+            const prof_pairs = try Profiler.TimeFunction(@src());
             pair_count += 1;
             const pair = HaversinePair{
                 .x0 = ConvertElementToF64(e, "x0"),
@@ -458,11 +458,11 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
             };
 
             try parsed_values.append(pair);
+            prof_pairs.end();
         }
     }
     std.debug.print("PARSED_VALUES: {}\n", .{parsed_values.items[0]});
 
-    block_2.end();
     return pair_count;
 }
 
