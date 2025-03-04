@@ -32,7 +32,7 @@ pub fn PrintTimeElapsed(label: []const u8, total: u64, begin: u64, end: u64) !vo
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const pa = std.heap.page_allocator;
-    Profiler.map = std.StringHashMap(u32).init(pa);
+    Profiler.map = std.AutoHashMap(u64, u32).init(pa);
     defer Profiler.map.deinit();
 
     Profiler.BeginProfile();
@@ -51,7 +51,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     //Prof_Read = profiling.ReadCPUTimer();
-    const read_block = try Profiler.TimeBlock("Read", @src());
+    const read_block = Profiler.TimeBlock("Read", @src());
     var file = try std.fs.cwd().openFile("gen/pairs.json", .{});
     const meta = try file.metadata();
     const file_size = meta.size();
@@ -60,7 +60,7 @@ pub fn main() !void {
     const inputJSON = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(inputJSON);
     read_block.end();
-    const misc_setup = try Profiler.TimeBlock("MiscSetup", @src());
+    const misc_setup = Profiler.TimeBlock("MiscSetup", @src());
     //Prof_MiscSetup = profiling.ReadCPUTimer();
 
     var inputJSONList = std.ArrayList(u8).init(allocator);
@@ -82,11 +82,11 @@ pub fn main() !void {
     //print("LEN: {d}\n", .{inputJSON.len});
     //const data = try zson.mock();
     misc_setup.end();
-    const prof_parse = try Profiler.TimeBlock("Parse", @src());
+    const prof_parse = Profiler.TimeBlock("Parse", @src());
     //Prof_Parse = profiling.ReadCPUTimer();
     _ = try zson.parseHaversinePairs(&inputJSONList, &parsed_values);
     prof_parse.end();
-    const prof_sum = try Profiler.TimeBlock("Sum", @src());
+    const prof_sum = Profiler.TimeBlock("Sum", @src());
     //Prof_Sum = profiling.ReadCPUTimer();
     //print("parsed_values: {}\n", .{parsed_values});
     //print("pairs_count: {}\n", .{pairs_count});

@@ -256,7 +256,7 @@ const JsonParser = struct {
     }
 
     pub fn parseJsonElement(this: *@This(), label: []const u8, value: JsonToken) JsonParseError!?*JsonElement {
-        const prof_parse = try Profiler.TimeFunction(@src());
+        const prof_parse = Profiler.TimeFunction(@src());
         var valid = true;
 
         var subElement: ?*JsonElement = null;
@@ -448,7 +448,7 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
         while (element) |e| : (element = e.nextSibling) {
-            const prof_pairs = try Profiler.TimeFunction(@src());
+            const prof_pairs = Profiler.TimeFunction(@src());
             pair_count += 1;
             const pair = HaversinePair{
                 .x0 = ConvertElementToF64(e, "x0"),
