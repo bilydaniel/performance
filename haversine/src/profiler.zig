@@ -4,10 +4,21 @@ const Profiling = @import("profiling.zig");
 pub var profiler: Profiler = undefined;
 var parent: u32 = 0;
 var counter: u32 = 1;
+const profiler_enabled = true;
 
 pub var map: std.AutoHashMap(u64, u32) = undefined;
 
 pub fn TimeBlock(name: []const u8, src: std.builtin.SourceLocation) Block {
+    if (!profiler_enabled) {
+        //TODO: make better with comptime, no idea how for now
+        return Block{
+            .ParentIndex = 0,
+            .AnchorIndex = 0,
+            .Label = "",
+            .StartTSC = 0,
+            .OldTSCElapsedInclusive = 0,
+        };
+    }
     var hasher = std.hash.Wyhash.init(0);
     hasher.update(src.file);
     var AnchorIndex: u32 = 0;
@@ -81,11 +92,11 @@ const Anchor = struct {
 
     pub fn PrintTimeElapsed(this: Anchor, totalElapsed: i64) void {
         const percent = 100 * @as(f64, @floatFromInt(this.TSCElapsedExclusive)) / @as(f64, @floatFromInt(totalElapsed));
-        std.debug.print("   {s}[{d}]: {d}({d}%)\n", .{ this.Label, this.HitCount, this.TSCElapsedExclusive, percent });
+        std.debug.print("   {s}[{d}]: {d}({d:.2}%)\n", .{ this.Label, this.HitCount, this.TSCElapsedExclusive, percent });
 
         if (this.TSCElapsedExclusive != this.TSCElapsedInclusive) {
             const percentInclusive = 100 * @as(f64, @floatFromInt(this.TSCElapsedInclusive)) / @as(f64, @floatFromInt(totalElapsed));
-            std.debug.print("=>     ({d}%) with children\n", .{percentInclusive});
+            std.debug.print("=>     ({d:.2}%) with children\n", .{percentInclusive});
         }
     }
 };
@@ -111,6 +122,9 @@ const Block = struct {
     }
 
     pub fn end(this: Block) void {
+        if (!profiler_enabled) {
+            return;
+        }
         const elapsed: i64 = @as(i64, @intCast(Profiling.ReadCPUTimer())) - this.StartTSC;
         parent = this.ParentIndex;
 

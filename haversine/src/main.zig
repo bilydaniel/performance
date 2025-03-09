@@ -36,6 +36,7 @@ pub fn main() !void {
     defer Profiler.map.deinit();
 
     Profiler.BeginProfile();
+    const time_block = Profiler.TimeFunction(@src());
 
     //var Prof_Begin: u64 = 0;
     //var Prof_Read: u64 = 0;
@@ -51,16 +52,15 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     //Prof_Read = profiling.ReadCPUTimer();
-    const read_block = Profiler.TimeBlock("Read", @src());
     var file = try std.fs.cwd().openFile("gen/pairs.json", .{});
     const meta = try file.metadata();
     const file_size = meta.size();
     defer file.close();
 
+    const read_file = Profiler.TimeBlock("Read file ", @src());
     const inputJSON = try file.readToEndAlloc(allocator, file_size);
+    read_file.end();
     defer allocator.free(inputJSON);
-    read_block.end();
-    const misc_setup = Profiler.TimeBlock("MiscSetup", @src());
     //Prof_MiscSetup = profiling.ReadCPUTimer();
 
     var inputJSONList = std.ArrayList(u8).init(allocator);
@@ -81,12 +81,8 @@ pub fn main() !void {
     //print("parse_values: {}\n", .{parsed_values});
     //print("LEN: {d}\n", .{inputJSON.len});
     //const data = try zson.mock();
-    misc_setup.end();
-    const prof_parse = Profiler.TimeBlock("Parse", @src());
     //Prof_Parse = profiling.ReadCPUTimer();
     _ = try zson.parseHaversinePairs(&inputJSONList, &parsed_values);
-    prof_parse.end();
-    const prof_sum = Profiler.TimeBlock("Sum", @src());
     //Prof_Sum = profiling.ReadCPUTimer();
     //print("parsed_values: {}\n", .{parsed_values});
     //print("pairs_count: {}\n", .{pairs_count});
@@ -96,12 +92,13 @@ pub fn main() !void {
     var sum: f64 = 0;
     var count: i64 = 0;
 
+    const sum_block = Profiler.TimeBlock("Sum", @src());
     for (parsed_values.items) |pair| {
         //print("{d} {d} {d} {d}\n", pair);
         sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);
         count += 1;
     }
-    prof_sum.end();
+    sum_block.end();
     //Prof_MiscOutput = profiling.ReadCPUTimer();
     const average = sum / @as(f64, @floatFromInt(count));
     //Prof_End = profiling.ReadCPUTimer();
@@ -113,7 +110,6 @@ pub fn main() !void {
     //std.debug.print("\nTotal time: {d:.4}ms (CPU freq {d} Hz)\n", .{ time, cpuFreq });
     //}
 
-    print("****************************\n", .{});
     print("sum: {d}\n", .{sum});
     print("count: {d}\n", .{count});
     print("average: {d}\n", .{average});
@@ -124,5 +120,6 @@ pub fn main() !void {
     // PrintTimeElapsed("Parse", TotalCPUElapsed, Prof_Parse, Prof_Sum);
     // PrintTimeElapsed("Sum", TotalCPUElapsed, Prof_Sum, Prof_MiscOutput);
     // PrintTimeElapsed("MiscOutput", TotalCPUElapsed, Prof_MiscOutput, Prof_End);
+    time_block.end();
     Profiler.EndProfile();
 }

@@ -256,7 +256,6 @@ const JsonParser = struct {
     }
 
     pub fn parseJsonElement(this: *@This(), label: []const u8, value: JsonToken) JsonParseError!?*JsonElement {
-        const prof_parse = Profiler.TimeFunction(@src());
         var valid = true;
 
         var subElement: ?*JsonElement = null;
@@ -284,7 +283,6 @@ const JsonParser = struct {
             result.?.nextSibling = null;
         }
 
-        prof_parse.end();
         return result;
     }
 };
@@ -331,6 +329,8 @@ const JsonToken = struct {
 };
 
 fn parseJSON(input: *std.ArrayList(u8), allocator: std.mem.Allocator) !?*JsonElement {
+    const time_block = Profiler.TimeFunction(@src());
+    defer time_block.end();
     var json_parser = try JsonParser.init(allocator, input);
 
     const json_token = json_parser.getJsonToken();
@@ -437,18 +437,19 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
 }
 
 pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayList(HaversinePair)) !u64 {
+    const time_block = Profiler.TimeFunction(@src());
+    defer time_block.end();
     var pair_count: u64 = 0;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
     const JSON = try parseJSON(input, allocator);
-    defer FreeJson(JSON, allocator);
 
+    const convert = Profiler.TimeBlock("Lookup and convert", @src());
     const pairsArray = LookupElement(JSON, "pairs");
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
         while (element) |e| : (element = e.nextSibling) {
-            const prof_pairs = Profiler.TimeFunction(@src());
             pair_count += 1;
             const pair = HaversinePair{
                 .x0 = ConvertElementToF64(e, "x0"),
@@ -458,10 +459,13 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
             };
 
             try parsed_values.append(pair);
-            prof_pairs.end();
         }
     }
-    std.debug.print("PARSED_VALUES: {}\n", .{parsed_values.items[0]});
+    convert.end();
+
+    const json_block = Profiler.TimeBlock("FreeJSON", @src());
+    FreeJson(JSON, allocator);
+    json_block.end();
 
     return pair_count;
 }

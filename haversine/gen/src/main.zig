@@ -73,7 +73,7 @@ pub fn main() !void {
     }
 
     const pairsMap: ?[]const u8 = argMap.get("pairs");
-    var pairs: usize = 10;
+    var pairs: usize = 100;
     if (pairsMap) |value| {
         pairs = try std.fmt.parseInt(usize, value, 10);
     }
@@ -137,6 +137,7 @@ pub fn main() !void {
         //print("{d}\n", .{haversine_value});
         //std.debug.print("0: \tx:{d:.2}\n\ty:{d:.2}\n", .{ point0.x, point0.y });
         //std.debug.print("1: \tx:{d:.2}\n\ty:{d:.2}\n", .{ point1.x, point1.y });
+
         if (!uniform and @mod(i, cluster) == 0) {
             center.x = generateValue(&rng, 180);
             center.y = generateValue(&rng, 90);
