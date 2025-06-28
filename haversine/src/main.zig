@@ -58,7 +58,12 @@ pub fn main() !void {
     defer file.close();
 
     const read_file = Profiler.TimeBlock("Read file ", @src());
+
+    std.debug.print("file_size: {}", .{file_size});
+    const read_block = Profiler.TimeBlockBandwith("read_bandwith", @src(), file_size);
+
     const inputJSON = try file.readToEndAlloc(allocator, file_size);
+    read_block.end();
     read_file.end();
     defer allocator.free(inputJSON);
     //Prof_MiscSetup = profiling.ReadCPUTimer();
