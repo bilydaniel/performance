@@ -1,0 +1,82 @@
+Debugging Go programs and inspecting the assembly code with register values can be done using the delve debugger (dlv). Here's a step-by-step guide to achieve this:
+
+1. Install Delve
+First, install Delve if you haven't already:
+
+go install github.com/go-delve/delve/cmd/dlv@latest
+2. Compile Your Go Program with Debug Information
+Make sure to compile your Go program with the -gcflags="all=-N -l" flags. These flags disable optimizations and inlining, which makes debugging easier:
+
+sh
+go build -gcflags="all=-N -l" -o myprogram
+3. Start Delve
+Start delve with your compiled program:
+
+sh
+dlv exec ./myprogram
+4. Set Breakpoints and Start Debugging
+Set breakpoints at the desired locations in your code:
+
+sh
+(dlv) break main.main
+Start the program and let it run until it hits the breakpoint:
+
+sh
+(dlv) continue
+5. Inspect Assembly Code and Registers
+Once the breakpoint is hit, you can inspect the assembly code and register values:
+
+View Assembly Code
+To view the disassembled code around the current instruction pointer:
+
+sh
+(dlv) disassemble
+You can also disassemble specific functions:
+
+sh
+(dlv) disassemble -l main.main
+Inspect Registers
+To view the values of the registers:
+
+sh
+(dlv) regs
+This will show the current values in the CPU registers.
+
+6. Step Through Instructions
+You can step through the program at the assembly instruction level to see how the register values change:
+
+sh
+(dlv) step-instruction
+Example Session
+Here's an example session to illustrate:
+
+sh
+$ dlv exec ./myprogram
+Type 'help' for list of commands.
+(dlv) break main.main
+Breakpoint 1 set at 0x123456 for main.main() ./main.go:10
+(dlv) continue
+> main.main() ./main.go:10 (hits breakpoint)
+(dlv) disassemble
+=> 0x123456: mov eax, 0x1
+   0x12345b: call 0x123400
+(dlv) regs
+   RAX  0x0
+   RBX  0x0
+   RCX  0x0
+   RDX  0x0
+(dlv) step-instruction
+=> 0x12345b: call 0x123400
+(dlv) regs
+   RAX  0x1
+   RBX  0x0
+   RCX  0x0
+   RDX  0x0
+In this example, the mov eax, 0x1 instruction sets the RAX register to 1, and you can see this reflected in the regs command output after stepping through the instruction.
+
+Additional Tips
+List available commands: Use help to list all available commands in Delve.
+Inspect memory: Use mem to inspect memory.
+View variables: Use locals to view local variables.
+Conclusion
+Using Delve, you can effectively debug Go programs at both the source and assembly levels, inspecting register values and stepping through instructions to gain a deeper understanding of your program's execution.
