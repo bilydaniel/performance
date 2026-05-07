@@ -1,102 +1,44 @@
-start thinking about the CPU: instructions in, finish out. 
-How long the cpu takes to finish set of instructions? => reduce the number of instructions or change the speed of the instructions(some instructions are alot slower)
+lets make notes in terms of zig and go(try to use this at your job too)
+my main goal is to build the habits and skills to write code in a better way
 
-The problem is higher abstraction + higher cpu complexity(no idea what happens in the cpu)
+Keep the cpu in mind -> instructions in, work out
 
-Every program becomes assembler, think about it, not just your language
+to make program performant either reduce the number of instructions(simplify the algorithm) or or change the speed at which the instructions go through the cpu(different instructions take different time, or change the order of instructions, or how they access memory)
+think about what your code translates into(what asm instructions)
 
-1 - Waste:
-Unnecesery instructions (they do nothing)
-go tool objdump -S app > ass
-go build -gcflags -S main.go
+Waste:
+    instructions that do literally nothing
+    ADD A,B (A += B),LEA A,[B+C](A = B + C), one instruction in cpu, 180 instructions in python
 
-2 - IPC - instructions per clock
-    ILP - instruction level paralelysm
+Instructions per clock / instruction level paralelism:
+    you can ask the cpu to do the same instruction (ADD) in a way more efficient way
+    cpu can do alot more than 1 instruction per cycle
+    loop overhead, do more work comparativly to the loop overhead (more sums in one loop), unrolling
+    look at the overhead of the work you are trying to do in general, not just loops
 
-sum = 0
-for(int i = 0; i<4096; i++){
-      sum += data[i]
-}
-
-Unrolling a loop -> i+=2(or more) instead of i++ 
+    for(int i=0; i < count; i++){
+            sum += input[i];
+    }
 
-sum = 0
-for(int i = 0; i<4096; i+=2){
-      sum += data[i]
-      sum += data[i+1]
-}
--> increasing the actual work, decreasing the overhead of the cycle
--> i+=2 helped quite alot, more than that doesent really help (you can paralel add + cmp or jmp but cannot paralel the add + add, next add is dependent on the previous one)
+    gets translated into:
+        ADD A, input[i]
+        ADD A, input[i+1]
+        etc...
+    -> max is 1 instruction per cycle because it all works on A(the result of the previous add is needed for the next one), need to break the chain up
+    serial dependency chain
+    cant do instructions in paralel
 
+    for(int i=0; i < count; i+=2){
+            sumA += input[i];
+            sumB += input[i+1];
+    }
+    sum = sumA + sumB
+    breaks the chain
+    cpus have execution ports, each can do certain actions(ADD and CMP can be on the same execution port)
+    cpus can only send a certain maximum of instruction per clock(4)
 
-Breaking the dependency chain:
-sumA = 0
-sumB = 0
-for(int i = 0; i<4096; i+=2){
-      sumA += data[i]
-      sumB += data[i+1]
-}
-sum = sumA+sumB
-
-results in an even faster code (can do more sums than two)
-
-3 - Single inctruction, multiple data:
-PADDD like vector adding, registers with for example four numbers, saves cpus work, doesent have to decode four instructions etc.
-registers are now 128-256-512 bits, using SIMD you can do multiple calculations at the same time, meaining if you use  smaller ints(32bit vs 8bit), you can calculate faster
-- not sure how to use in Go, gotta look into that
-
-4 - Cache:
-think about how you access your data, where are they stored?
-
-l1(13.4) 32k -> l2(7.7) 256k -> l3(4.4) 8m -> RAM(1.4)16g?
-
-QnA:
-register renamer
-how to use gpu?
-how cpu / ram works in kubernetis??
-Sliding window of instructions that are done out of order (around 100 instructions)
-debugging (steeping through the instructions) goes throught the retired instructions, they are actually done differently
-
-simd with wrong number of elements: padding, mask load / mask store, some instruction sets have length
-simd is faster because of instruction decoding limit (around 4 mops per cycle), another reason is loading data(doesent matter how much we load, but how many times matter)
-
-put things that are use together close together for faster cashing (have correnct data structure)
-
-think about whats in the cache, am I replacing it needlesly? (do as much work at one time), minimize the times data gets pulled in to cache
-
-front(instructions) and back(data) in cpu, L1 is separate, L2 and beyond is shared for data and instructions
-
-5 - Multithreading:
-
-faster because more computation power + "bigger" cache, each core has its own L1 and L2 cache, so we can fit more data combined
-
-numCPU := runtime.NumCPU()//number of CPUs
-
-QnA:
-Hyperthreading -> tries to help with IPC, not that helpfull, very usefull on GPUs
-Branch prediction -> could be the reason why you have low IPC, just keep in mind
-Best way too write multithread -> figure out a way so that the threads dont have to talk to each other
-
-oversubscripition (more threads than core) -> bad cache(has to swap) -> slow for OS, because os has to manage it all(dont), waiting threads are fine(listening for an event)
-
-Clean code, horrible performance:
-
-The Haversine distance problem:
-
-Instruction decoding on the 8086:
-
-The stack:
-    dedicated chunk of memory, a register keeps track of where we are in the stack currently, (SP -> stack pointer)
-    starts on high address in memory, grows down(heaps grow from bottom up)
-    push ax, pop ax, push -> sub sp + mov [sp], ax, pop -> mov ax, [sp], add sp
-    call -> push ip + jmp
-    ret -> pop ip + jmp
-    arguments to function on stack or in registers (depends on calling convention)
-    Stack can get reserved for arrays etc., you store the pointer to the start of the array to for example bx and use it as usual
-
-Estimating cycles:
-    look at the generated assembly to see what compiler picked as a solution
-    instruction table (with speeds)
+SIMD:
+    
 
 
 
