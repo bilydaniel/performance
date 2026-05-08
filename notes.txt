@@ -38,7 +38,12 @@ Instructions per clock / instruction level paralelism:
     cpus can only send a certain maximum of instruction per clock(4)
 
 SIMD:
-    
+    helps reducing the number of instructions
+    //TODO: try out SIMD in zig
+    can be combined with IPS, unrolled SIMD
+    LEARN how to code in SIMD, wait for now
+    SIMD uses different ALU, several of them in fact, 
+    wide registers, wide ALUs
 
 
 
