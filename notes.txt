@@ -42,9 +42,45 @@ SIMD:
     //TODO: try out SIMD in zig
     can be combined with IPS, unrolled SIMD
     LEARN how to code in SIMD, wait for now
-    SIMD uses different ALU, several of them in fact, 
+    SIMD uses different ALU, several of them in fact(there was 3 in our case), 
     wide registers, wide ALUs
+    SIMD instrucctions can be slower(more latent) than normal ones(still performance gain tho), but its getting better, pipelining helps alot(especially with loading)
+    SIMD helps because the cpu can only issue like 3-4 mops per cycle(otherwise independant scalar adds might be as fast as SIMD, there is more scalar adders then there are SIMD adders), you need execution ports for loading(better to load more bytes into SIMD registers)
+    
+CASHING:
+    Very important to performance, analyze them
+    ADD A,INPUT[i] -> INPUT[i] is a LOAD, have to wait for it to finish
+    Memory is a bottleneck(without cashing)
+    To work on anything, the cpu has to have the values in a register file(one of the registers), when loading, the cpu looks into its cashe to load them into the refisters first
+    When loading from memory, a cashe line is copied(64 Bytes) usually into all the cashes(L1,L2,L3)
+    L1(size = 32KB) speed = 3-4 cycles (64 bytes of data per cycle)
+    L2(size = 256KB) speed = 14 cycles 
+    L3(size = 8MB) speed = 80 cycles 
+    Memory speed = 100+ cycles
+    there are prefetch instructions instead of loads to load data into cashe(helps if the load would otherwise be too far for the lookahead, so the cpu doesent know that is gonna need the data and doesent load it ahead, like 300 cycles)
+    there si a streaming instruction, that says to never cashe some data, when you know you only gonna need it once
+    streaming load / store
+    the further away from the cpu the less data per cycle can be retreived(L1 to CPU is like 64 Bytes per cycle, Memory to L3 is like 5 Bytes per cycle)
+    imagine connections between cashes like pipes of certain thickness, if your data is mostly in L3 because its too big, it doesent matter that L1 is fast, its waiting to get data from L3
+    prefetcher looks at the pattern that accurs in your data loading and tries to guess the next data and prefetches them, whether its linear or skipping by some ammount(//TODO: why do you need data lokality than, ECS should not be better at this case)
+    //TODO: try ECS or SoA
+    64B cashe lines
+    cache alignment helps with not polluting your cache with unneceserry data
+    try to always use all the data in the pulled cache line to not waste it(if you are pulling 64B, use all of it, not just a few bytes)
+    if data is already loaded in the cache do as much work as possible, so that you dont have to load it again later
+    all the leves of cache are the same in terms of hardware, the speed and size differences are just spacial, further away from the core, less connections
+    instructions also have caches, L1 is separated for data and instrucitons usually, L2 and L3 are shared    
 
 
+Register renamer fixes fake chain dependencies
+//TODO: learn SIMD, 
+//TODO: learn graphics programming(for computations, pretty much the same as SIMD, just with slower clock speed and 	IPC, but with higher paralelism(more ALUs, bigger queue, etc.)
+//TODO: learn threading / paralelism in zig
+
+out of order window - retirement index(sliding window)
+
+if simd doesent have the correct number of data you can pad or have a masked load/store
+
+masking helps with if statements in simd
 
 
