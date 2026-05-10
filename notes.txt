@@ -84,3 +84,22 @@ if simd doesent have the correct number of data you can pad or have a masked loa
 masking helps with if statements in simd
 
 
+MULTITHREADING:
+    usually hard to implement in practice
+    extra performance because of caching(each thread has its own L1 cache)
+    memory bandwith for multithread depends on the chip(some chips dont take multithreading that much into consideration)
+    if threads have to talk to each other its a mistake, sometimes has to be done, but should not be
+
+//TODO: LEARN EVERYTHING IN ZIG FOR NOW, HAVE A LOOK AT GO LATER
+
+The haversine distance problem:
+    distance between two points on earth(using an arc, not a straight line since earth is curved)
+    loading json, calculating 
+
+Clean code, horrible performance:
+    Polymorpism(35 cycles / shape -> 24 cycles /shape)
+    Internals, instead of switch on types, can use pattern to just make a table of constants(24 -> 4)
+    Small + 1 thing in function
+    
+//TODO: QnA #3 31m
+//TODO: Instruction Decoding on the 8086
