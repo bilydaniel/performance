@@ -103,3 +103,24 @@ Clean code, horrible performance:
     
 //TODO: QnA #3 31m
 //TODO: Instruction Decoding on the 8086
+
+Hyperthreading, logical cores
+
+make as many threads as there are cores(oversubscription), bad cashe, operating system overhead
+
+green threads are controlled by my code, not operating system (regular threads are controlled by operating system)
+
+when doing multistep algorithms, split data into chunks that fit into cashe, first step still needs to load up the data into cashe but all the other steps dont. Split data into buckets, essentially batching
+
+load and store buffers (for loading / storing cashe lines between cashe and registers)
+
+
+8086:
+    make a virtual CPU simulation
+    registers - 16 bits
+    move memory to registers -> work -> move back to memory (computational model)
+    
+    instruction decode, we need to get and understand an instruction that we can execute
+    mov is a copy
+    mov(mnemonic) AX(dest),BC(src) 
+    AX, AL, AH
