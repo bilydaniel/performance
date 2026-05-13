@@ -135,5 +135,16 @@ load and store buffers (for loading / storing cashe lines between cashe and regi
 
     registers are for data, not instructions
 
+    add, sub, cmp follow the same pattern as mov(same types) -> dont have to load a value into register to add, can use memory address directly just like move
+
+    conditional jumps, jnz
+
+    multipass algoritms, loading up instructions decoding them into something bigger putting them into array and then reading them again -> be careful about sizes, cashe suffers
+
+    the fewer passes the better 
+
+    //TODO: make a struct for instruction, and probably just some helper functions?
+
+    table of data that drives the decoding(can use any set of rules)
 
 

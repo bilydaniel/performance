@@ -6,7 +6,7 @@
       "request": "launch",
       "name": "Debug Zig",
       "program": "${workspaceFolder}/zig-out/bin/testing_grounds",
-      "args": [],
+      "args": ["data/listing_0039_more_movs"],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "zig build"
     }
