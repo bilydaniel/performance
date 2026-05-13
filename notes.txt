@@ -124,3 +124,16 @@ load and store buffers (for loading / storing cashe lines between cashe and regi
     mov is a copy
     mov(mnemonic) AX(dest),BC(src) 
     AX, AL, AH
+
+    all normals moves and immedeate move
+
+    reg-reg, immedeate, source address calcs, destination address calcs
+
+    positive / negative numbers can be swapped, binary is the same cpu doesent care, just be careful of that
+
+    probably dont wanna do the challenges, kinda dont care
+
+    registers are for data, not instructions
+
+
+
