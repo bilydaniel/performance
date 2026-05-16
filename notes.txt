@@ -147,4 +147,9 @@ load and store buffers (for loading / storing cashe lines between cashe and regi
 
     table of data that drives the decoding(can use any set of rules)
 
+    memory simulation is not implemented, skipping for now, wanna get to the more interesting stuff, i know asm already anyway
+    //TODO: @finish the simulator
+
+    
+
 

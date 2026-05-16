@@ -37,6 +37,7 @@ add ax, [bp]
 add al, [bx + si]
 add ax, bx
 add al, ah
+;po sem spravne, dodelat accumulator
 add ax, 1000
 add al, -30
 add al, 9

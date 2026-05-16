@@ -1,4 +1,5 @@
 const std = @import("std");
+const Cpu = @import("cpu.zig");
 
 var arenaAllocator: std.mem.Allocator = undefined;
 pub fn main() !void {
@@ -27,6 +28,8 @@ pub fn main() !void {
     const cwd = std.fs.cwd();
     const fileName = args[1];
 
+    Cpu.init();
+
     const MB = 1024 * 1024;
     instructions = try cwd.readFileAlloc(arenaAllocator, fileName, 1 * MB);
 
@@ -37,25 +40,28 @@ pub fn main() !void {
     _ = try aw.writer.write("bits 16 \n");
     _ = try aw.writer.write("\n");
 
-    while (instructionIndex < instructions.len) {
+    while (Cpu.ip < instructions.len) {
         var instruction = Instruction{};
         try instruction.decodeNext();
         try instruction.string(&aw);
+        try Cpu.executeInstruction(instruction);
+        try Cpu.getFlags(&aw);
 
         //std.debug.print("{s}", .{buffer[0..writer.end]});
         buffer = aw.toArrayList();
         std.debug.print("{s}", .{buffer.items});
     }
+
+    Cpu.printRegisters();
 }
 
 var instructions: []u8 = undefined;
-var instructionIndex: usize = 0;
 pub fn getNext() !u8 {
-    if (instructionIndex >= instructions.len) {
+    if (Cpu.ip >= instructions.len) {
         return error.OutOfInstructions;
     }
-    const instruction = instructions[instructionIndex];
-    instructionIndex += 1;
+    const instruction = instructions[@intCast(Cpu.ip)];
+    Cpu.ip += 1;
     return instruction;
 }
 
@@ -86,14 +92,14 @@ pub fn getAddressCalc(allocator: std.mem.Allocator, rm: usize) ![]u8 {
     return result;
 }
 
-pub fn getData(w: u8) !u16 {
-    var imm: u16 = 0;
+pub fn getData(w: u8) !i16 {
+    var imm: i16 = 0;
     if (w == 0) {
         const data1 = try getNext();
         imm = data1;
     } else {
         const data1 = try getNext();
-        const data2: u16 = try getNext();
+        const data2: i16 = try getNext();
         const data = (data1) | (data2 << 8);
         imm = data;
     }
@@ -103,21 +109,61 @@ pub fn getData(w: u8) !u16 {
 
 const Op = enum {
     none,
+
+    // MOV
     mov_rm_rm,
     mov_imm_rm,
     mov_imm_r,
+
+    // ADD
     add_rm_rm,
+    add_imm_rm,
+    add_imm_r,
+
+    // SUB
+    sub_rm_rm,
+    sub_imm_rm,
+    sub_imm_r,
+
+    // CMP
+    cmp_rm_rm,
+    cmp_imm_rm,
+    cmp_imm_r,
+
+    // COND JUMPS
+    jnz,
+    je,
+    jl,
+    jle,
+    jb,
+    jbe,
+    jp,
+    jo,
+    js,
+    jne,
+    jnl,
+    jg,
+    jnb,
+    ja,
+    jnp,
+    jno,
+    jns,
+    loop,
+    looz,
+    loopnz,
+    jcxz,
 };
 
-const Instruction = struct {
+pub const Instruction = struct {
     op: Op = .none,
     d: u1 = 0, // 0 = reg is source 1 = reg is dest
     w: u1 = 0, // 0 = 8  1 = 16
+    s: u1 = 0,
     mod: u2 = 0, // 00 = memory, 01 memory 8 displace, 10 memory 16 displace, 11 register
     reg: u3 = 0,
     rm: u3 = 0,
-    imm: u16 = 0,
-    disp: u16 = 0,
+    imm: i16 = 0,
+    disp: i16 = 0,
 
     pub fn decodeNext(this: *Instruction) !void {
         const byte1 = try getNext();
@@ -151,98 +197,137 @@ const Instruction = struct {
         } else if (instructionSet.add_rm_rm.check(byte1)) {
             //add rm + rm
             this.op = .add_rm_rm;
-            // _ = try aw.writer.write();
 
-            // const d = (byte1 & 0b00000010) >> 1;
-            // const w = byte1 & 0b00000001;
-            //
-            // const byte2 = getNext() orelse undefined;
-            //
-            // const mod = byte2 & 0b11000000;
-            // const reg = byte2 & 0b00111000;
-            // const rm = byte2 & 0b00000111;
-            //
-            // const regValue = reg >> 3;
-            // const regLabel = getRegister(arenaAllocator, regValue, w) catch undefined;
-            // if (mod == 0b11000000) {
-            //     //registers
-            //     const rmLabel = getRegister(arenaAllocator, rm, w) catch undefined;
-            //     if (d == 0) {
-            //         // _ = try aw.writer.write(rmLabel);
-            //         // _ = try aw.writer.write(", ");
-            //         // _ = try aw.writer.write(regLabel);
-            //     } else {
-            //         // _ = try aw.writer.write(regLabel);
-            //         // _ = try aw.writer.write(", ");
-            //         // _ = try aw.writer.write(rmLabel);
-            //     }
-            //
-            //     // _ = try aw.writer.write("\n");
-            // } else if (mod == 0b00000000) {
-            //     //TODO:dont forget the 110 rm
-            //     const rmLabel = getAddressCalc(arenaAllocator, rm) catch undefined;
-            //
-            //     if (d == 0) {
-            //         // _ = try aw.writer.write("[");
-            //         // _ = try aw.writer.write(rmLabel);
-            //         // _ = try aw.writer.write("], ");
-            //         // _ = try aw.writer.write(regLabel);
-            //     } else {
-            //         // _ = try aw.writer.write(regLabel);
-            //         // _ = try aw.writer.write(", [");
-            //         // _ = try aw.writer.write(rmLabel);
-            //         // _ = try aw.writer.write("]");
-            //     }
-            //     // _ = try aw.writer.write("\n");
-            // } else if (mod == 0b01000000) {
-            //     const rmLabel = getAddressCalc(arenaAllocator, rm) catch undefined;
-            //     const disp = getData(0);
-            //
-            //     if (d == 0) {
-            //         // _ = try aw.writer.write("[");
-            //         // _ = try aw.writer.write(rmLabel);
-            //         // _ = try aw.writer.print(" + {}", .{disp});
-            //         // _ = try aw.writer.write("], ");
-            //         // _ = try aw.writer.write(regLabel);
-            //     } else {
-            //         // _ = try aw.writer.write(regLabel);
-            //         // _ = try aw.writer.write(", [");
-            //         // _ = try aw.writer.write(rmLabel);
-            //         // _ = try aw.writer.print(" + {}", .{disp});
-            //         // _ = try aw.writer.write("]");
-            //     }
-            //     // _ = try aw.writer.write("\n");
-            // } else if (mod == 0b10000000) {
-            //     const rmLabel = getAddressCalc(arenaAllocator, rm) catch undefined;
-            //     const disp = getData(1);
-            //
-            //     if (d == 0) {
-            //         // _ = try aw.writer.write("[");
-            //         // _ = try aw.writer.write(rmLabel);
-            //         // _ = try aw.writer.print(" + {}", .{disp});
-            //         // _ = try aw.writer.write("], ");
-            //         // _ = try aw.writer.write(regLabel);
-            //     } else {
-            //         // _ = try aw.writer.write(regLabel);
-            //         // _ = try aw.writer.write(", [");
-            //         // _ = try aw.writer.write(rmLabel);
-            //         // _ = try aw.writer.print(" + {}", .{disp});
-            //         // _ = try aw.writer.write("]");
-            //     }
-            //     // _ = try aw.writer.write("\n");
-            // }
-        } else if ((byte1 & 0b11111100) == 0b00000000) {
+            this.d = @intCast((byte1 & 0b00000010) >> 1);
+            this.w = @intCast(byte1 & 0b00000001);
+
+            const byte2 = try getNext();
+            this.mod = @intCast((byte2 & 0b11000000) >> 6);
+            this.reg = @intCast((byte2 & 0b00111000) >> 3);
+            this.rm = @intCast(byte2 & 0b00000111);
+
+            if (this.mod == 1) {
+                this.disp = try getData(0);
+            } else if (this.mod == 2) {
+                this.disp = try getData(1);
+            }
+        } else if (instructionSet.any_imm_rm.check(byte1)) {
+            //TODO:@finish
             //add imm + rm
 
-        } else if ((byte1 & 0b11111100) == 0b00000000) {
+            this.s = @intCast((byte1 & 0b00000010) >> 1);
+            this.w = @intCast(byte1 & 0b00000001);
+
+            const byte2 = try getNext();
+            this.mod = @intCast((byte2 & 0b11000000) >> 6);
+            this.reg = @intCast((byte2 & 0b00111000) >> 3);
+            this.rm = @intCast(byte2 & 0b00000111);
+
+            if (this.reg == 0) {
+                this.op = .add_imm_rm;
+            } else if (this.reg == 5) {
+                this.op = .sub_imm_rm;
+            } else if (this.reg == 7) {
+                this.op = .cmp_imm_rm;
+            }
+
+            if (this.mod == 1) {
+                this.disp = try getData(0);
+            } else if (this.mod == 2) {
+                this.disp = try getData(1);
+            }
+
+            if (this.s == 0 and this.w == 1) {
+                this.imm = try getData(1);
+            } else {
+                this.imm = try getData(0);
+            }
+        } else if (instructionSet.add_imm_r.check(byte1)) {
             //add imm + accumulator
+            this.op = .add_imm_r;
+            this.w = @intCast(byte1 & 0b00000001);
+            this.imm = try getData(this.w);
+        } else if (instructionSet.sub_rm_rm.check(byte1)) {
+            //sub rm + rm
+            this.op = .sub_rm_rm;
+
+            this.d = @intCast((byte1 & 0b00000010) >> 1);
+            this.w = @intCast(byte1 & 0b00000001);
+
+            const byte2 = try getNext();
+            this.mod = @intCast((byte2 & 0b11000000) >> 6);
+            this.reg = @intCast((byte2 & 0b00111000) >> 3);
+            this.rm = @intCast(byte2 & 0b00000111);
+
+            if (this.mod == 1) {
+                this.disp = try getData(0);
+            } else if (this.mod == 2) {
+                this.disp = try getData(1);
+            }
+        } else if (instructionSet.sub_imm_r.check(byte1)) {
+            //sub imm + accumulator
+            this.op = .sub_imm_r;
+            this.w = @intCast(byte1 & 0b00000001);
+            this.imm = try getData(this.w);
+        } else if (instructionSet.cmp_rm_rm.check(byte1)) {
+            //sub rm + rm
+            this.op = .cmp_rm_rm;
+
+            this.d = @intCast((byte1 & 0b00000010) >> 1);
+            this.w = @intCast(byte1 & 0b00000001);
+
+            const byte2 = try getNext();
+            this.mod = @intCast((byte2 & 0b11000000) >> 6);
+            this.reg = @intCast((byte2 & 0b00111000) >> 3);
+            this.rm = @intCast(byte2 & 0b00000111);
+
+            if (this.mod == 1) {
+                this.disp = try getData(0);
+            } else if (this.mod == 2) {
+                this.disp = try getData(1);
+            }
+        } else if (instructionSet.cmp_imm_r.check(byte1)) {
+            //sub imm + accumulator
+            this.op = .cmp_imm_r;
+            this.w = @intCast(byte1 & 0b00000001);
+            this.imm = try getData(this.w);
+        } else if (instructionSet.jnz.check(byte1)) {
+            this.op = .jnz;
+            this.imm = @as(i8, @truncate(try getData(0)));
+        } else if (instructionSet.je.check(byte1)) {
+            this.op = .je;
+            this.imm = try getData(0);
+        } else if (instructionSet.jl.check(byte1)) {
+            this.op = .jl;
+            this.imm = try getData(0);
+        } else if (instructionSet.jle.check(byte1)) {
+            this.op = .jle;
+            this.imm = try getData(0);
+        } else if (instructionSet.jb.check(byte1)) {
+            this.op = .jb;
+            this.imm = try getData(0);
+        } else if (instructionSet.jbe.check(byte1)) {
+            this.op = .jbe;
+            this.imm = try getData(0);
+        } else if (instructionSet.jp.check(byte1)) {
+            this.op = .jp;
+            this.imm = try getData(0);
+        } else if (instructionSet.jo.check(byte1)) {
+            this.op = .jo;
+            this.imm = try getData(0);
+        } else if (instructionSet.js.check(byte1)) {
+            this.op = .js;
+            this.imm = try getData(0);
+        } else if (instructionSet.jnl.check(byte1)) {
+            this.op = .jnl;
+            this.imm = try getData(0);
         }
     }
     pub fn string(this: *Instruction, aw: *std.Io.Writer.Allocating) !void {
         switch (this.op) {
             .mov_rm_rm => {
                 _ = try aw.writer.write("mov ");
-                try this.stringCommonModRMRM(aw);
+                try this.stringCommonModRMRM(aw, false);
             },
             .mov_imm_r => {
                 _ = try aw.writer.write("mov ");
@@ -257,20 +342,127 @@ const Instruction = struct {
                 _ = try aw.writer.write(immString);
                 _ = try aw.writer.write("\n");
             },
+            .add_rm_rm => {
+                _ = try aw.writer.write("add ");
+                try this.stringCommonModRMRM(aw, false);
+            },
+            .add_imm_rm => {
+                _ = try aw.writer.write("add ");
+                try this.stringCommonModRMRM(aw, true);
+            },
+            .add_imm_r => {
+                //A only
+                _ = try aw.writer.write("add ");
+                const regLabel = try getRegister(arenaAllocator, 0, this.w);
+
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+
+                _ = try aw.writer.write(regLabel);
+                _ = try aw.writer.write(", ");
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            .sub_rm_rm => {
+                _ = try aw.writer.write("sub ");
+                try this.stringCommonModRMRM(aw, false);
+            },
+            .sub_imm_rm => {
+                _ = try aw.writer.write("sub ");
+                try this.stringCommonModRMRM(aw, true);
+            },
+            .sub_imm_r => {
+                //A only
+                _ = try aw.writer.write("sub ");
+                const regLabel = try getRegister(arenaAllocator, 0, this.w);
+
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+
+                _ = try aw.writer.write(regLabel);
+                _ = try aw.writer.write(", ");
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            .cmp_rm_rm => {
+                _ = try aw.writer.write("cmp ");
+                try this.stringCommonModRMRM(aw, false);
+            },
+            .cmp_imm_rm => {
+                _ = try aw.writer.write("cmp ");
+                try this.stringCommonModRMRM(aw, true);
+            },
+            .cmp_imm_r => {
+                //A only
+                _ = try aw.writer.write("cmp ");
+                const regLabel = try getRegister(arenaAllocator, 0, this.w);
+
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+
+                _ = try aw.writer.write(regLabel);
+                _ = try aw.writer.write(", ");
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            .jnz => {
+                _ = try aw.writer.write("jnz ");
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            .je => {
+                _ = try aw.writer.write("je ");
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            .jl => {
+                _ = try aw.writer.write("jl ");
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            .jle => {
+                _ = try aw.writer.write("jle ");
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            .jb => {
+                _ = try aw.writer.write("jbe ");
+                var immBuff: [20]u8 = undefined;
+                const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+                _ = try aw.writer.write(immString);
+                _ = try aw.writer.write("\n");
+            },
+            //TODO: @finish
 
             else => {},
         }
     }
-    pub fn stringCommonModRMRM(this: *Instruction, aw: *std.Io.Writer.Allocating) !void {
-        const regLabel = getRegister(arenaAllocator, this.reg, this.w) catch undefined;
+    pub fn stringCommonModRMRM(this: *Instruction, aw: *std.Io.Writer.Allocating, useImm: bool) !void {
+        const regLabel = getRegister(arenaAllocator, this.reg, this.w) catch unreachable;
+
+        var immBuff: [20]u8 = undefined;
+        const immString = try std.fmt.bufPrint(&immBuff, "{d}", .{this.imm});
+
         switch (this.mod) {
             3 => {
                 //registers
-                const rmLabel = getRegister(arenaAllocator, this.rm, this.w) catch undefined;
+                const rmLabel = getRegister(arenaAllocator, this.rm, this.w) catch unreachable;
                 if (this.d == 0) {
                     _ = try aw.writer.write(rmLabel);
                     _ = try aw.writer.write(", ");
-                    _ = try aw.writer.write(regLabel);
+                    if (useImm) {
+                        _ = try aw.writer.write(immString);
+                    } else {
+                        _ = try aw.writer.write(regLabel);
+                    }
                 } else {
                     _ = try aw.writer.write(regLabel);
                     _ = try aw.writer.write(", ");
@@ -280,13 +472,17 @@ const Instruction = struct {
             },
             0 => {
                 //TODO:dont forget the 110 rm
-                const rmLabel = getAddressCalc(arenaAllocator, this.rm) catch undefined;
+                const rmLabel = getAddressCalc(arenaAllocator, this.rm) catch unreachable;
 
                 if (this.d == 0) {
                     _ = try aw.writer.write("[");
                     _ = try aw.writer.write(rmLabel);
                     _ = try aw.writer.write("], ");
-                    _ = try aw.writer.write(regLabel);
+                    if (useImm) {
+                        _ = try aw.writer.write(immString);
+                    } else {
+                        _ = try aw.writer.write(regLabel);
+                    }
                 } else {
                     _ = try aw.writer.write(regLabel);
                     _ = try aw.writer.write(", [");
@@ -296,14 +492,18 @@ const Instruction = struct {
                 _ = try aw.writer.write("\n");
             },
             1 => {
-                const rmLabel = getAddressCalc(arenaAllocator, this.rm) catch undefined;
+                const rmLabel = getAddressCalc(arenaAllocator, this.rm) catch unreachable;
 
                 if (this.d == 0) {
                     _ = try aw.writer.write("[");
                     _ = try aw.writer.write(rmLabel);
                     _ = try aw.writer.print(" + {}", .{this.disp});
                     _ = try aw.writer.write("], ");
-                    _ = try aw.writer.write(regLabel);
+                    if (useImm) {
+                        _ = try aw.writer.write(immString);
+                    } else {
+                        _ = try aw.writer.write(regLabel);
+                    }
                 } else {
                     _ = try aw.writer.write(regLabel);
                     _ = try aw.writer.write(", [");
@@ -314,13 +514,17 @@ const Instruction = struct {
                 _ = try aw.writer.write("\n");
             },
             2 => {
-                const rmLabel = getAddressCalc(arenaAllocator, this.rm) catch undefined;
+                const rmLabel = getAddressCalc(arenaAllocator, this.rm) catch unreachable;
                 if (this.d == 0) {
                     _ = try aw.writer.write("[");
                     _ = try aw.writer.write(rmLabel);
                     _ = try aw.writer.print(" + {}", .{this.disp});
                     _ = try aw.writer.write("], ");
-                    _ = try aw.writer.write(regLabel);
+                    if (useImm) {
+                        _ = try aw.writer.write(immString);
+                    } else {
+                        _ = try aw.writer.write(regLabel);
+                    }
                 } else {
                     _ = try aw.writer.write(regLabel);
                     _ = try aw.writer.write(", [");
@@ -335,10 +539,46 @@ const Instruction = struct {
 };
 
 const instructionSet = struct {
+    // MOV
     const mov_rm_rm = InstructionDef{ .mask = 0b11111100, .value = 0b10001000 };
     const mov_imm_rm = InstructionDef{ .mask = 0b11111110, .value = 0b11000110 };
     const mov_imm_r = InstructionDef{ .mask = 0b11110000, .value = 0b10110000 };
+
+    const any_imm_rm = InstructionDef{ .mask = 0b11111100, .value = 0b10000000 };
+
+    // ADD
     const add_rm_rm = InstructionDef{ .mask = 0b11111100, .value = 0b00000000 };
+    const add_imm_r = InstructionDef{ .mask = 0b11111110, .value = 0b00000100 };
+
+    // SUB
+    const sub_rm_rm = InstructionDef{ .mask = 0b11111100, .value = 0b00101000 };
+    const sub_imm_r = InstructionDef{ .mask = 0b11111110, .value = 0b00101100 };
+
+    // CMP
+    const cmp_rm_rm = InstructionDef{ .mask = 0b11111100, .value = 0b00111000 };
+    const cmp_imm_r = InstructionDef{ .mask = 0b11111110, .value = 0b00111100 };
+
+    const jnz = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    const je = InstructionDef{ .mask = 0b11111111, .value = 0b01110100 };
+    const jl = InstructionDef{ .mask = 0b11111111, .value = 0b01111100 };
+    const jle = InstructionDef{ .mask = 0b11111111, .value = 0b01111110 };
+    const jb = InstructionDef{ .mask = 0b11111111, .value = 0b01110010 };
+    const jbe = InstructionDef{ .mask = 0b11111111, .value = 0b01110110 };
+    const jp = InstructionDef{ .mask = 0b11111111, .value = 0b01111010 };
+    const jo = InstructionDef{ .mask = 0b11111111, .value = 0b01110000 };
+    const js = InstructionDef{ .mask = 0b11111111, .value = 0b01111000 };
+    const jnl = InstructionDef{ .mask = 0b11111111, .value = 0b01111101 };
+    //TODO: @finish
+    // const jg = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const jnb = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const ja = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const jnp = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const jno = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const jns = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const loop = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const loopz = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const loopnz = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
+    // const jcxz = InstructionDef{ .mask = 0b11111111, .value = 0b01110101 };
 };
 
 const InstructionDef = struct {
