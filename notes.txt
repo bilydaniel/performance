@@ -1,3 +1,7 @@
+!!//TODO: make a dwarf fortress clone, use urizen tileset, i guess lets use goblins instead of dwarfs !!
+!!//TODO: great for learning performance, MANY things to optimize !!
+
+
 lets make notes in terms of zig and go(try to use this at your job too)
 my main goal is to build the habits and skills to write code in a better way
 
@@ -151,5 +155,62 @@ load and store buffers (for loading / storing cashe lines between cashe and regi
     //TODO: @finish the simulator
 
     
+    all the things like garbage collection, smart pointers, memory safety of rust etc. are just symptom of not knowing the memory layout in your program(compare that to the simplicity of 8086 when making the image, just a simple write)
 
+    other important instructions: mul, imul, div, idiv, shifts(sign extended)
+
+THE STACK:
+    helps with calling functions and local variables
+    starts at a high number, grows down(for example from address 40 000 to 30 000) needs a register to keep the index (stack pointer)
+    push register onto the stack to save the values before calling a function, pop after function
+
+    push ax, pop ax (mov data from / to stack + changes the stack pointer)
+    call is a jmp + push of instruction pointer(push ip on its own isnt legal), ret is the opposite
+    calling convention / ABI(application binary interface), who pushes, who pops
+
+    parameters are just values saved in registers before calling the function(convention for where is it saved again), or could be pushed onto the stack
+
+    to save local variables on the stack you just move the SP by an amount and just use the created space 
+
+
+Andrew Kelly DoD:
+    dod from jblow:
+        https://gamesfromwithin.com/data-oriented-design
+        https://www.youtube.com/watch?v=fHNmRkzxHWs&t=5s
+        https://www.youtube.com/watch?v=rX0ItVEVjHc
+    
+    data oriented design by richard fabien
+    math is faster than reading, maybe you should calculate things again instead of storing
+    ithare.com graphq
+    try not to evict cashe lines, do more with cpu, less with memory, dont have cashe misses
+    where are many objects in memory, make them smaller
+
+    memory layout: alignment + size alignment is dictated by the biggest member, size can be altered by alignment
+
+    memory footprint reduction: 
+        use index into an array instead of a pointer(integer is smaller than pointer)
+        "Handles are the better pointers" blog post
+        intead of having alive bool, have two arrays, one for alive monsters, one for dead ones, reduces memory, information stays
+
+    struct of arrays eliminate padding
+    multiArrayList
+
+    stor sparse data in hashmaps
+    for example if your monster have an inventory but most monster dont have anything in it, put the data in a hashmap(sparse)
+
+    use base entity instead of tagged unions
+    encoding using tags, bee_yellow / bee_black, enums instead of a color field
+
+    use encodings instead of oop/polymorphism(dont really like this one)
+
+
+
+estimating cycles => 8086 pretty simple, there is a table and there is nothing that complicated on the chip
+
+//TODO: learn to use godbolt
+
+register are virtualized, mov can just swap names in a table
+
+
+//TODO: add result prints for the generator
 
