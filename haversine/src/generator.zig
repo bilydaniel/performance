@@ -54,8 +54,10 @@ const Arguments = struct {
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
 
     const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
     const arguments = try parseArgs(args);
 
     var file = try std.fs.cwd().createFile("pairs.json", .{});
@@ -79,7 +81,6 @@ pub fn main() !void {
     var point0: Point = undefined;
     var point1: Point = undefined;
     var haversine_sum: f64 = 0;
-    //TODO: @finish saving results of every pair into a binary file
     for (0..arguments.numberOfPairs) |i| {
         if (arguments.uniform) {
             point0.x = randomInRange(-180, 180);
@@ -94,6 +95,7 @@ pub fn main() !void {
         }
 
         const haversine_value = haversine(point0.x, point0.y, point1.x, point1.y, EARTH_RADIUS);
+        //TODO: @finish saving results of every pair into a binary file
         haversine_sum += haversine_value;
 
         if (i == arguments.numberOfPairs - 1) {
@@ -106,6 +108,8 @@ pub fn main() !void {
         if (!arguments.uniform and @mod(i, arguments.clusterSize) == 0) {
             center.x = randomInRange(-180, 180);
             center.y = randomInRange(-90, 90);
+            radiusx = randomInRange(0, 180);
+            radiusy = randomInRange(0, 90);
         }
     }
     _ = try writer.write("]\n}");
@@ -115,23 +119,43 @@ pub fn main() !void {
 }
 
 fn parseArgs(args: [][:0]u8) !Arguments {
-    _ = args;
     var arguments = Arguments{};
     arguments.seed = @abs(std.time.microTimestamp());
-    //TODO: finish arguments
 
-    // while (args.next()) |arg| {
-    //     if (std.mem.startsWith(u8, arg, "--")) {
-    //         if (std.mem.indexOf(u8, arg, "=") != null) {
-    //             var split = std.mem.splitAny(u8, arg, "=");
-    //
-    //             const key = split.next() orelse return error.InvalidArgument;
-    //
-    //             const value = split.next() orelse return error.InvalidArgument;
-    //
-    //             try argMap.put(key[2..], value);
-    //         }
-    //     }
-    // }
+    for (args) |arg| {
+        std.debug.print("arg: {s}\n", .{arg});
+        if (std.mem.startsWith(u8, arg, "--")) {
+            if (std.mem.indexOf(u8, arg, "=") != null) {
+                var split = std.mem.splitAny(u8, arg, "=");
+
+                const key = split.next() orelse return error.InvalidArgument;
+                const value = split.next() orelse return error.InvalidArgument;
+
+                std.debug.print("key: {s}\n", .{key});
+                std.debug.print("v: {s}\n", .{value});
+
+                if (std.mem.eql(u8, key, "--uniform")) {
+                    if (std.mem.eql(u8, value, "true")) {
+                        arguments.uniform = true;
+                    } else if (std.mem.eql(u8, value, "false")) {
+                        arguments.uniform = false;
+                    } else {
+                        return error.wrongValue;
+                    }
+                } else if (std.mem.eql(u8, key, "--seed")) {
+                    arguments.seed = try std.fmt.parseInt(u64, value, 10);
+                } else if (std.mem.eql(u8, key, "--pairs")) {
+                    arguments.numberOfPairs = try std.fmt.parseInt(usize, value, 10);
+                } else if (std.mem.eql(u8, key, "--cluster")) {
+                    arguments.clusterSize = try std.fmt.parseInt(usize, value, 10);
+                } else {
+                    return error.unknownArgument;
+                }
+            } else {
+                return error.argumentHasNoEqual;
+            }
+        }
+    }
+
     return arguments;
 }

@@ -54,26 +54,27 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     //Prof_Read = profiling.ReadCPUTimer();
-    var file = try std.fs.cwd().openFile("gen/pairs.json", .{});
-    const meta = try file.metadata();
-    const file_size = meta.size();
+    var file = try std.fs.cwd().openFile("pairs.json", .{});
+    const stat = try file.stat();
+    const fileSize = stat.size;
     defer file.close();
 
     const read_file = Profiler.TimeBlock("Read file ", @src());
 
-    std.debug.print("file_size: {}", .{file_size});
-    const read_block = Profiler.TimeBlockBandwith("read_bandwith", @src(), file_size);
+    std.debug.print("file_size: {}", .{fileSize});
+    const read_block = Profiler.TimeBlockBandwith("read_bandwith", @src(), fileSize);
 
-    const inputJSON = try file.readToEndAlloc(allocator, file_size);
+    const inputJSON = try file.readToEndAlloc(allocator, fileSize);
     read_block.end();
     read_file.end();
     defer allocator.free(inputJSON);
     //Prof_MiscSetup = profiling.ReadCPUTimer();
 
-    var inputJSONList = std.ArrayList(u8).init(allocator);
-    defer inputJSONList.deinit();
+    //TODO: probably remove, no idea why am i using this
+    var inputJSONList = std.ArrayList(u8).empty;
+    defer inputJSONList.deinit(allocator);
 
-    try inputJSONList.appendSlice(inputJSON);
+    try inputJSONList.appendSlice(allocator, inputJSON);
 
     //std.debug.print("{s}\n", .{content});
 
@@ -81,8 +82,8 @@ pub fn main() !void {
     //u32 MinimumJSONPairEncoding = 6*4;
     //u64 MaxPairCount = InputJSON.Count / MinimumJSONPairEncoding;
     //nechci zatim pouzivat, je to "optimalizace"
-    var parsed_values = std.ArrayList(zson.HaversinePair).init(allocator);
-    defer parsed_values.deinit();
+    var parsed_values = std.ArrayList(zson.HaversinePair).empty;
+    defer parsed_values.deinit(allocator);
 
     //print("INPUT_JSON: {s}\n", .{inputJSON});
     //print("parse_values: {}\n", .{parsed_values});
