@@ -3,7 +3,7 @@ const Profiler = @import("profiler.zig");
 
 const print = std.debug.print;
 
-const Pair = struct {
+pub const Pair = struct {
     x0: f64,
     y0: f64,
     x1: f64,
@@ -19,12 +19,12 @@ const JsonParseError = error{
 };
 
 const JsonParser = struct {
-    source: *std.ArrayList(u8),
+    source: []u8,
     at: u64 = 0,
     hadError: bool = false,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, input: *std.ArrayList(u8)) !JsonParser {
+    pub fn init(allocator: std.mem.Allocator, input: []u8) !JsonParser {
         return JsonParser{
             .allocator = allocator,
             .source = input,
@@ -33,27 +33,27 @@ const JsonParser = struct {
         };
     }
 
-    fn ParseKeyword(this: *JsonParser, rest: []const u8, result: *JsonToken, tokentype: JsonTokenType) !void {
+    fn parseKeyword(this: *JsonParser, rest: []const u8, result: *JsonToken, tokentype: JsonTokenType) void {
         const tokenstart = this.at;
         this.at += 1;
 
-        if (rest.len <= this.source.items.len - this.at) {
-            const check = this.source.items[this.at .. this.at + rest.len];
+        if (rest.len <= this.source.len - this.at) {
+            const check = this.source[this.at .. this.at + rest.len];
             if (std.mem.eql(u8, check, rest)) {
                 this.at += rest.len;
                 const tokenend = this.at;
 
                 result.type = tokentype;
-                result.value = this.source.items[tokenstart..tokenend];
+                result.value = this.source[tokenstart..tokenend];
             }
         }
     }
 
-    fn IsJsonDigit(this: *JsonParser) bool {
+    fn isJsonDigit(this: *JsonParser) bool {
         var result = false;
 
-        if (this.at < this.source.items.len) {
-            const val = this.source.items[this.at];
+        if (this.at < this.source.len) {
+            const val = this.source[this.at];
             result = (val >= '0' and val <= '9');
         }
         return result;
@@ -67,8 +67,8 @@ const JsonParser = struct {
             this.at += 1;
         }
 
-        if (this.at < this.source.items.len) {
-            const val = this.source.items[this.at];
+        if (this.at < this.source.len) {
+            const val = this.source[this.at];
             switch (val) {
                 '{' => {
                     result.type = JsonTokenType.Token_open_brace;
@@ -100,13 +100,14 @@ const JsonParser = struct {
                 },
 
                 'f' => {
-                    try this.ParseKeyword("alse", &result, JsonTokenType.Token_false);
+                    //TODO: doesent return error, @fix
+                    this.parseKeyword("alse", &result, JsonTokenType.Token_false);
                 },
                 't' => {
-                    try this.ParseKeyword("rue", &result, JsonTokenType.Token_false);
+                    this.parseKeyword("rue", &result, JsonTokenType.Token_true);
                 },
                 'n' => {
-                    try this.ParseKeyword("ull", &result, JsonTokenType.Token_false);
+                    this.parseKeyword("ull", &result, JsonTokenType.Token_null);
                 },
 
                 '"' => {
@@ -114,17 +115,17 @@ const JsonParser = struct {
                     result.type = JsonTokenType.Token_string_literal;
                     const stringstart = this.at;
 
-                    while (this.at < this.source.items.len and this.source.items[this.at] != '"') {
-                        if ((this.at + 1 < this.source.items.len) and this.source.items[this.at] == '\\' and this.source.items[this.at + 1] == '"') {
+                    while (this.at < this.source.len and this.source[this.at] != '"') {
+                        if ((this.at + 1 < this.source.len) and this.source[this.at] == '\\' and this.source[this.at + 1] == '"') {
                             this.at += 1;
                         }
                         this.at += 1;
                     }
 
                     const stringend = this.at;
-                    result.value = this.source.items[stringstart..stringend];
+                    result.value = this.source[stringstart..stringend];
 
-                    if (this.at < this.source.items.len) {
+                    if (this.at < this.source.len) {
                         this.at += 1;
                     }
                 },
@@ -153,32 +154,32 @@ const JsonParser = struct {
                     }
 
                     if (val != '0') {
-                        while (this.IsJsonDigit()) {
+                        while (this.isJsonDigit()) {
                             this.at += 1;
                         }
                     }
 
-                    if (this.at < this.source.items.len and this.source.items[this.at] == '.') {
+                    if (this.at < this.source.len and this.source[this.at] == '.') {
                         this.at += 1;
-                        while (this.IsJsonDigit()) {
+                        while (this.isJsonDigit()) {
                             this.at += 1;
                         }
                     }
 
-                    if (this.at < this.source.items.len and (this.source.items[this.at] == 'e' or this.source.items[this.at] == 'E')) {
+                    if (this.at < this.source.len and (this.source[this.at] == 'e' or this.source[this.at] == 'E')) {
                         this.at += 1;
 
-                        if (this.at < this.source.items.len and (this.source.items[this.at] == '+' or this.source.items[this.at] == '-')) {
+                        if (this.at < this.source.len and (this.source[this.at] == '+' or this.source[this.at] == '-')) {
                             this.at += 1;
                         }
 
-                        while (this.IsJsonDigit()) {
+                        while (this.isJsonDigit()) {
                             this.at += 1;
                         }
                     }
 
                     const numberend = this.at;
-                    result.value = this.source.items[numberstart..numberend];
+                    result.value = this.source[numberstart..numberend];
                 },
                 else => result.type = JsonTokenType.Token_error,
             }
@@ -188,22 +189,23 @@ const JsonParser = struct {
     }
 
     fn isWhiteSpace(this: JsonParser) bool {
-        if (this.at >= this.source.items.len) {
+        if (this.at >= this.source.len) {
             return false;
         }
 
-        const val = this.source.items[this.at];
+        const val = this.source[this.at];
         return val == ' ' or val == '\t' or val == '\n' or val == '\r';
     }
 
     pub fn inBounds(this: *@This()) bool {
-        return (this.at < this.source.items.len);
+        return (this.at < this.source.len);
     }
 
     pub fn isParsing(this: *@This()) bool {
         return (!this.hadError and this.inBounds());
     }
 
+    //TODO: make the error handling more zig?
     pub fn Error(this: *@This(), token: JsonToken, msg: []const u8) void {
         this.hadError = true;
         std.debug.print("ERROR: parser: {}, token:{}, msg:{s}\n", .{ this.at, token, msg });
@@ -294,15 +296,6 @@ const JsonElement = struct {
     nextSibling: ?*JsonElement,
 };
 
-const JsonValue = union(enum) {
-    null,
-    boolean: bool,
-    number: f64,
-    string: []const u8,
-    array: []JsonValue,
-    object: std.StringHashMap(JsonValue),
-};
-
 const JsonTokenType = enum {
     Token_end_of_stream,
     Token_error,
@@ -328,7 +321,7 @@ const JsonToken = struct {
     value: []const u8,
 };
 
-fn parseJSON(input: *std.ArrayList(u8), allocator: std.mem.Allocator) !?*JsonElement {
+fn parseJSON(input: []u8, allocator: std.mem.Allocator) !?*JsonElement {
     const time_block = Profiler.TimeFunction(@src());
     defer time_block.end();
     var json_parser = try JsonParser.init(allocator, input);
@@ -340,7 +333,7 @@ fn parseJSON(input: *std.ArrayList(u8), allocator: std.mem.Allocator) !?*JsonEle
     return result;
 }
 
-pub fn LookupElement(JSON: ?*JsonElement, name: []const u8) ?*JsonElement {
+pub fn lookupElement(JSON: ?*JsonElement, name: []const u8) ?*JsonElement {
     var result: ?*JsonElement = null;
 
     if (JSON) |json| {
@@ -356,7 +349,7 @@ pub fn LookupElement(JSON: ?*JsonElement, name: []const u8) ?*JsonElement {
     return result;
 }
 
-pub fn ConvertSign(source: []const u8, at: *u64) f64 {
+pub fn convertSign(source: []const u8, at: *u64) f64 {
     var result: f64 = 1.0;
 
     if (at.* < source.len and source[at.*] == '-') {
@@ -366,7 +359,7 @@ pub fn ConvertSign(source: []const u8, at: *u64) f64 {
     return result;
 }
 
-pub fn ConvertNumber(source: []const u8, at: *u64) f64 {
+pub fn convertNumber(source: []const u8, at: *u64) f64 {
     var result: f64 = 0.0;
 
     while (at.* < source.len) {
@@ -386,17 +379,17 @@ pub fn ConvertNumber(source: []const u8, at: *u64) f64 {
     return result;
 }
 
-pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
+pub fn convertElementToF64(element: *JsonElement, name: []const u8) f64 {
     var result: f64 = 0;
 
-    const innerElement = LookupElement(element, name);
+    const innerElement = lookupElement(element, name);
 
     if (innerElement) |inn| {
         const source = inn.value;
         var at: u64 = 0;
 
-        const sign: f64 = ConvertSign(source, &at);
-        var number: f64 = ConvertNumber(source, &at);
+        const sign: f64 = convertSign(source, &at);
+        var number: f64 = convertNumber(source, &at);
 
         if (at < source.len and source[at] == '.') {
             at += 1;
@@ -409,7 +402,7 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
                 const val = source[at] - @as(u8, '0');
                 //breaks if . or e
                 if (val < 10) {
-                    number = number + C * @as(f64, @floatFromInt(char));
+                    number = number + C * @as(f64, @floatFromInt(char - '0'));
                     C *= 1.0 / 10.0;
                     at += 1;
                 } else {
@@ -425,8 +418,8 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
                 at += 1;
             }
 
-            const Esign = ConvertSign(source, &at);
-            const Enumber = ConvertNumber(source, &at);
+            const Esign = convertSign(source, &at);
+            const Enumber = convertNumber(source, &at);
             const E = Esign * Enumber;
             number *= std.math.pow(f64, 10, E);
         }
@@ -436,26 +429,24 @@ pub fn ConvertElementToF64(element: *JsonElement, name: []const u8) f64 {
     return result;
 }
 
-pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayList(Pair)) !u64 {
+pub fn parseHaversinePairs(allocator: std.mem.Allocator, input: []u8, parsed_values: *std.ArrayList(Pair)) !u64 {
     const time_block = Profiler.TimeFunction(@src());
     defer time_block.end();
     var pair_count: u64 = 0;
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
 
     const JSON = try parseJSON(input, allocator);
 
     const convert = Profiler.TimeBlock("Lookup and convert", @src());
-    const pairsArray = LookupElement(JSON, "pairs");
+    const pairsArray = lookupElement(JSON, "pairs");
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
         while (element) |e| : (element = e.nextSibling) {
             pair_count += 1;
             const pair = Pair{
-                .x0 = ConvertElementToF64(e, "x0"),
-                .y0 = ConvertElementToF64(e, "y0"),
-                .x1 = ConvertElementToF64(e, "x1"),
-                .y1 = ConvertElementToF64(e, "y1"),
+                .x0 = convertElementToF64(e, "x0"),
+                .y0 = convertElementToF64(e, "y0"),
+                .x1 = convertElementToF64(e, "x1"),
+                .y1 = convertElementToF64(e, "y1"),
             };
 
             try parsed_values.append(allocator, pair);
@@ -464,18 +455,18 @@ pub fn parseHaversinePairs(input: *std.ArrayList(u8), parsed_values: *std.ArrayL
     convert.end();
 
     const json_block = Profiler.TimeBlock("FreeJSON", @src());
-    FreeJson(JSON, allocator);
+    freeJson(JSON, allocator);
     json_block.end();
 
     return pair_count;
 }
 
-pub fn FreeJson(JSON: ?*JsonElement, allocator: std.mem.Allocator) void {
+pub fn freeJson(JSON: ?*JsonElement, allocator: std.mem.Allocator) void {
     var json = JSON;
     while (json) |j| {
         json = j.nextSibling;
 
-        FreeJson(j.firstSubElement, allocator);
+        freeJson(j.firstSubElement, allocator);
         allocator.destroy(j);
     }
 }

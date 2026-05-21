@@ -31,7 +31,13 @@ pub fn printTimeElapsed(label: []const u8, total: u64, begin: u64, end: u64) !vo
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    //TODO: test out arena allocator
+
+    const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
+
     const pa = std.heap.page_allocator;
+
     //TODO: init / deinit map in profiler
     Profiler.map = std.AutoHashMap(u64, u32).init(pa);
     defer Profiler.map.deinit();
@@ -49,15 +55,12 @@ pub fn main() !void {
 
     //Prof_Begin = profiling.ReadCPUTimer();
 
-    //defer std.debug.print("LEAKS: {}\n", .{gpa.deinit()});
-    //TODO: test out arena allocator
-    const allocator = gpa.allocator();
-
     //Prof_Read = profiling.ReadCPUTimer();
     var file = try std.fs.cwd().openFile("pairs.json", .{});
+    defer file.close();
+
     const stat = try file.stat();
     const fileSize = stat.size;
-    defer file.close();
 
     const read_file = Profiler.TimeBlock("Read file ", @src());
 
@@ -70,19 +73,13 @@ pub fn main() !void {
     defer allocator.free(inputJSON);
     //Prof_MiscSetup = profiling.ReadCPUTimer();
 
-    //TODO: probably remove, no idea why am i using this
-    var inputJSONList = std.ArrayList(u8).empty;
-    defer inputJSONList.deinit(allocator);
-
-    try inputJSONList.appendSlice(allocator, inputJSON);
-
     //std.debug.print("{s}\n", .{content});
 
     //TODO: casey ma tohle:
     //u32 MinimumJSONPairEncoding = 6*4;
     //u64 MaxPairCount = InputJSON.Count / MinimumJSONPairEncoding;
     //nechci zatim pouzivat, je to "optimalizace"
-    var parsed_values = std.ArrayList(zson.HaversinePair).empty;
+    var parsed_values = std.ArrayList(zson.Pair).empty;
     defer parsed_values.deinit(allocator);
 
     //print("INPUT_JSON: {s}\n", .{inputJSON});
@@ -90,7 +87,7 @@ pub fn main() !void {
     //print("LEN: {d}\n", .{inputJSON.len});
     //const data = try zson.mock();
     //Prof_Parse = profiling.ReadCPUTimer();
-    _ = try zson.parseHaversinePairs(&inputJSONList, &parsed_values);
+    _ = try zson.parseHaversinePairs(allocator, inputJSON, &parsed_values);
     //Prof_Sum = profiling.ReadCPUTimer();
     //print("parsed_values: {}\n", .{parsed_values});
     //print("pairs_count: {}\n", .{pairs_count});

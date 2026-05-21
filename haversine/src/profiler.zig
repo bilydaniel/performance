@@ -8,6 +8,7 @@ const profiler_enabled = true;
 
 pub var map: std.AutoHashMap(u64, u32) = undefined;
 
+//TODO add name as comptime
 pub fn TimeBlock(name: []const u8, src: std.builtin.SourceLocation) Block {
     return TimeBlockBandwith(name, src, 0);
 }

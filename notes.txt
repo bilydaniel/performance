@@ -214,3 +214,15 @@ register are virtualized, mov can just swap names in a table
 
 //TODO: add result prints for the generator
 
+converting to json makes rounding errors, just something to be aware of
+if you need precision, dont use a text format, either use binary, or if you have to use text representation encode the float as a hexa, conversion doesent break anything
+
+in paralel programming, processors lock cashe lines when accessing them, make sure to align memory so this doesent happen
+
+CPUID - intrinsic for cpu info
+
+RDTSC - 
+
+kinds of measurements:
+    clock time - 
+
