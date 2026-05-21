@@ -232,8 +232,6 @@ that to figure out the frequency
 
 query performance counter on windows
 
-//TODO: have a look at listings 70-73 for counters
-
 
 we care more about the number of cycles than real time
 
