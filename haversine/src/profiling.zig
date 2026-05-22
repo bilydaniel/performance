@@ -1,41 +1,42 @@
 const std = @import("std");
 const c = @cImport(@cInclude("sys/time.h"));
 
-pub fn ReadCPUTimer() u64 {
-    var hi: u64 = 0;
-    var lo: u64 = 0;
+pub fn readCPUTimer() u64 {
+    var high: u64 = 0;
+    var low: u64 = 0;
 
+    //TODO: what volatile means?
     asm volatile (
         \\rdtsc
-        : [low] "={eax}" (lo),
-          [high] "={edx}" (hi),
+        : [low] "={eax}" (low),
+          [high] "={edx}" (high),
     );
 
-    return (hi << 32 | lo);
+    return (high << 32 | low);
 }
 
-pub fn ReadOSTimer() u64 {
+pub fn readOSTimer() u64 {
     var value: c.timeval = undefined;
     _ = c.gettimeofday(&value, null);
     return 1_000_000 * @as(u64, @intCast(value.tv_sec)) + @as(u64, @intCast(value.tv_usec));
 }
 
-pub fn EstimateCPUTimerFreq() u64 {
+pub fn estimateCPUTimerFreq() u64 {
     const milllisecondsToWait: u64 = 100;
     const osFreq = 1_000_000;
 
-    const cpuStart = ReadCPUTimer();
-    const osStart = ReadOSTimer();
+    const cpuStart = readCPUTimer();
+    const osStart = readOSTimer();
     var osEnd: u64 = 0;
     var osElapsed: u64 = 0;
     const osWaitTime: u64 = osFreq * milllisecondsToWait / 1000;
 
     while (osElapsed < osWaitTime) {
-        osEnd = ReadOSTimer();
+        osEnd = readOSTimer();
         osElapsed = osEnd - osStart;
     }
 
-    const cpuEnd = ReadCPUTimer();
+    const cpuEnd = readCPUTimer();
     const cpuElapsed = cpuEnd - cpuStart;
 
     var cpuFreq: u64 = 0;
@@ -45,3 +46,19 @@ pub fn EstimateCPUTimerFreq() u64 {
 
     return cpuFreq;
 }
+
+//FOR WINDOWS
+
+// static u64 GetOSTimerFreq(void)
+// {
+// LARGE_INTEGER Freq;
+// QueryPerformanceFrequency(&Freq);
+// return Freq.QuadPart;
+// }
+
+// static u64 ReadOSTimer(void)
+// {
+// LARGE_INTEGER Value;
+// QueryPerformanceCounter(&Value);
+// return Value.QuadPart;
+// }

@@ -42,8 +42,8 @@ pub fn main() !void {
     Profiler.map = std.AutoHashMap(u64, u32).init(pa);
     defer Profiler.map.deinit();
 
-    Profiler.BeginProfile();
-    const time_block = Profiler.TimeFunction(@src());
+    Profiler.beginProfile();
+    const time_block = Profiler.timeFunction(@src());
 
     //var Prof_Begin: u64 = 0;
     //var Prof_Read: u64 = 0;
@@ -62,10 +62,10 @@ pub fn main() !void {
     const stat = try file.stat();
     const fileSize = stat.size;
 
-    const read_file = Profiler.TimeBlock("Read file ", @src());
+    const read_file = Profiler.timeBlock("Read file ", @src());
 
     std.debug.print("file_size: {}", .{fileSize});
-    const read_block = Profiler.TimeBlockBandwith("read_bandwith", @src(), fileSize);
+    const read_block = Profiler.timeBlockBandwith("read_bandwith", @src(), fileSize);
 
     const inputJSON = try file.readToEndAlloc(allocator, fileSize);
     read_block.end();
@@ -97,7 +97,7 @@ pub fn main() !void {
     var sum: f64 = 0;
     var count: i64 = 0;
 
-    const sum_block = Profiler.TimeBlock("Sum", @src());
+    const sum_block = Profiler.timeBlock("Sum", @src());
     for (parsed_values.items) |pair| {
         //print("{d} {d} {d} {d}\n", pair);
         sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);
@@ -126,5 +126,5 @@ pub fn main() !void {
     // PrintTimeElapsed("Sum", TotalCPUElapsed, Prof_Sum, Prof_MiscOutput);
     // PrintTimeElapsed("MiscOutput", TotalCPUElapsed, Prof_MiscOutput, Prof_End);
     time_block.end();
-    Profiler.EndProfile();
+    Profiler.endProfile();
 }

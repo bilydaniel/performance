@@ -4,17 +4,17 @@ const Profiling = @import("profiling.zig");
 pub var profiler: Profiler = undefined;
 var parent: u32 = 0;
 var counter: u32 = 1;
-const profiler_enabled = true;
+const profilerEnabled = true;
 
 pub var map: std.AutoHashMap(u64, u32) = undefined;
 
 //TODO add name as comptime
-pub fn TimeBlock(name: []const u8, src: std.builtin.SourceLocation) Block {
-    return TimeBlockBandwith(name, src, 0);
+pub fn timeBlock(name: []const u8, src: std.builtin.SourceLocation) Block {
+    return timeBlockBandwith(name, src, 0);
 }
-pub fn TimeBlockBandwith(name: []const u8, src: std.builtin.SourceLocation, byte_count: u64) Block {
-    if (!profiler_enabled) {
-        //TODO: make better with comptime, no idea how for now
+
+pub fn timeBlockBandwith(name: []const u8, src: std.builtin.SourceLocation, byte_count: u64) Block {
+    if (!profilerEnabled) {
         return Block{
             .ParentIndex = 0,
             .AnchorIndex = 0,
@@ -43,106 +43,106 @@ pub fn TimeBlockBandwith(name: []const u8, src: std.builtin.SourceLocation, byte
     return Block.start(name, AnchorIndex, byte_count);
 }
 
-pub fn TimeFunction(src: std.builtin.SourceLocation) Block {
-    return TimeBlock(src.fn_name, src);
+pub fn timeFunction(src: std.builtin.SourceLocation) Block {
+    return timeBlock(src.fn_name, src);
 }
 
-pub fn BeginProfile() void {
+pub fn beginProfile() void {
     profiler = .{
-        .StartTSC = 0,
-        .EndTSC = 0,
-        .Anchors = std.mem.zeroes([4096]Anchor),
+        .startTSC = 0,
+        .endTSC = 0,
+        .anchors = std.mem.zeroes([4096]Anchor),
     };
 
-    profiler.StartTSC = @intCast(Profiling.ReadCPUTimer());
+    profiler.startTSC = @intCast(Profiling.readCPUTimer());
 }
 
-pub fn EndProfile() void {
-    profiler.EndTSC = @intCast(Profiling.ReadCPUTimer());
-    const cpufreq = Profiling.EstimateCPUTimerFreq();
+pub fn endProfile() void {
+    profiler.endTSC = @intCast(Profiling.readCPUTimer());
+    const cpufreq = Profiling.estimateCPUTimerFreq();
 
-    const totalElapsed = profiler.EndTSC - profiler.StartTSC;
+    const totalElapsed = profiler.endTSC - profiler.startTSC;
 
     if (cpufreq > 0) {
         std.debug.print("Total time: {d:.4}ms ({d})\n", .{ 1000 * @as(f64, @floatFromInt(totalElapsed)) / @as(f64, @floatFromInt(cpufreq)), cpufreq });
     }
-    for (profiler.Anchors) |anchor| {
+    for (profiler.anchors) |anchor| {
         if (anchor.TSCElapsedInclusive > 0) {
-            anchor.PrintTimeElapsed(totalElapsed, cpufreq);
+            anchor.printTimeElapsed(totalElapsed, cpufreq);
         }
     }
 }
 
 const Profiler = struct {
-    Anchors: [4096]Anchor,
-    StartTSC: i64,
-    EndTSC: i64,
+    anchors: [4096]Anchor,
+    startTSC: i64,
+    endTSC: i64,
 };
 
 const Anchor = struct {
     TSCElapsedExclusive: i64,
     TSCElapsedInclusive: i64,
-    HitCount: u64,
-    Label: []const u8,
-    ProcessedByteCount: u64,
+    hitCount: u64,
+    label: []const u8,
+    processedByteCount: u64,
 
-    pub fn PrintTimeElapsed(this: Anchor, totalElapsed: i64, cpufreq: u64) void {
+    pub fn printTimeElapsed(this: Anchor, totalElapsed: i64, cpufreq: u64) void {
         const percent = 100 * @as(f64, @floatFromInt(this.TSCElapsedExclusive)) / @as(f64, @floatFromInt(totalElapsed));
-        std.debug.print("\t{s}[{d}]: {d}({d:.2}%)", .{ this.Label, this.HitCount, this.TSCElapsedExclusive, percent });
+        std.debug.print("\t{s}[{d}]: {d}({d:.2}%)", .{ this.label, this.hitCount, this.TSCElapsedExclusive, percent });
 
         if (this.TSCElapsedExclusive != this.TSCElapsedInclusive) {
             const percentInclusive = 100 * @as(f64, @floatFromInt(this.TSCElapsedInclusive)) / @as(f64, @floatFromInt(totalElapsed));
             std.debug.print("\n\t\t({d:.2}%) with children", .{percentInclusive});
         }
 
-        if (this.ProcessedByteCount > 0) {
+        if (this.processedByteCount > 0) {
             const megabyte: f64 = 1024 * 1024;
             const gigabyte: f64 = megabyte * 1024;
 
             const seconds: f64 = @as(f64, @floatFromInt(this.TSCElapsedInclusive)) / @as(f64, @floatFromInt(cpufreq));
-            const bytes_per_second: f64 = @as(f64, @floatFromInt(this.ProcessedByteCount)) / seconds;
-            const megabytes: f64 = @as(f64, @floatFromInt(this.ProcessedByteCount)) / megabyte;
-            const gigabytes_per_second = bytes_per_second / gigabyte;
-            std.debug.print("\n\t\t{d:.3}mb at {d:.2}gb/s", .{ megabytes, gigabytes_per_second });
+            const bytesPerSecond: f64 = @as(f64, @floatFromInt(this.processedByteCount)) / seconds;
+            const megabytes: f64 = @as(f64, @floatFromInt(this.processedByteCount)) / megabyte;
+            const gigabytesPerSecond = bytesPerSecond / gigabyte;
+            std.debug.print("\n\t\t{d:.3}mb at {d:.2}gb/s", .{ megabytes, gigabytesPerSecond });
         }
         std.debug.print("\n", .{});
     }
 };
 
 const Block = struct {
-    Label: []const u8,
-    StartTSC: i64,
-    ParentIndex: u32,
-    AnchorIndex: u32,
-    OldTSCElapsedInclusive: i64,
+    label: []const u8,
+    startTSC: i64,
+    parentIndex: u32,
+    anchorIndex: u32,
+    oldTSCElapsedInclusive: i64,
 
-    pub fn start(label: []const u8, anchor_index: u32, byte_count: u64) Block {
-        var anchor = &profiler.Anchors[anchor_index];
-        anchor.ProcessedByteCount += byte_count;
+    pub fn start(label: []const u8, anchorIndex: u32, byteCount: u64) Block {
+        var anchor = &profiler.anchors[anchorIndex];
+        anchor.processedByteCount += byteCount;
         const block = Block{
-            .ParentIndex = parent,
-            .AnchorIndex = anchor_index,
-            .Label = label,
-            .StartTSC = @intCast(Profiling.ReadCPUTimer()),
-            .OldTSCElapsedInclusive = anchor.TSCElapsedInclusive,
+            .parentIndex = parent,
+            .anchorIndex = anchorIndex,
+            .label = label,
+            .startTSC = @intCast(Profiling.readCPUTimer()),
+            .oldTSCElapsedInclusive = anchor.TSCElapsedInclusive,
         };
-        parent = anchor_index;
+        parent = anchorIndex;
         return block;
     }
 
     pub fn end(this: Block) void {
-        if (!profiler_enabled) {
+        if (!profilerEnabled) {
             return;
         }
-        const elapsed: i64 = @as(i64, @intCast(Profiling.ReadCPUTimer())) - this.StartTSC;
-        parent = this.ParentIndex;
+        const elapsed: i64 = @as(i64, @intCast(Profiling.readCPUTimer())) - this.startTSC;
+        parent = this.parentIndex;
 
-        var parentAnchor = &profiler.Anchors[this.ParentIndex];
-        var anchor = &profiler.Anchors[this.AnchorIndex];
+        var parentAnchor = &profiler.anchors[this.parentIndex];
+        var anchor = &profiler.anchors[this.anchorIndex];
         parentAnchor.TSCElapsedExclusive -= elapsed;
         anchor.TSCElapsedExclusive += elapsed;
-        anchor.TSCElapsedInclusive = this.OldTSCElapsedInclusive + elapsed;
-        anchor.HitCount += 1;
-        anchor.Label = this.Label;
+        anchor.TSCElapsedInclusive = this.oldTSCElapsedInclusive + elapsed;
+        anchor.hitCount += 1;
+        anchor.label = this.label;
     }
 };
