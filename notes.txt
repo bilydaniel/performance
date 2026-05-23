@@ -236,15 +236,15 @@ hyperviser can fuck with the query performance frequency(even after migrating to
 RDTSCP -> makes sure that it executes in order
 
 both RDTSC and RDTSCP is very course(like 40 cycles)
-
 query performance counter(query performance frequency) on windows
-
-
-//TODO: have a look at listings 70-73 for counters
-
-
 we care more about the number of cycles than real time
 
-kinds of measurements:
-    clock time - 
-    
+instrumentation based profiling
+sampling based profiling
+
+for non-intrusive profiling just take RDTSC in a couple of places and subtract
+them, but its cumbersome
+
+we need easy to use tool to be motivated to profile
+
+

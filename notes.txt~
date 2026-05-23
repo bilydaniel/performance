@@ -229,12 +229,22 @@ pretty much we dont count cycles any more, its just a very precise clock time
 no way to find the frequency for RDTSC easily
 we have to meassure a known counter (for examle from OS) using RDTSC and use
 that to figure out the frequency
+rdtsc is fixed nowadays(doesent change during the run)
 
-query performance counter on windows
+hyperviser can fuck with the query performance frequency(even after migrating to a different cpu the frequency stays on the old one)
 
+RDTSCP -> makes sure that it executes in order
 
+both RDTSC and RDTSCP is very course(like 40 cycles)
+query performance counter(query performance frequency) on windows
 we care more about the number of cycles than real time
 
-kinds of measurements:
-    clock time - 
-    
+instrumentation based profiling
+sampling based profiling
+
+for non-intrusive profiling just take RDTSC in a couple of places and subtract
+them, but its cumbersome
+
+we need easy to use tool to be motivated to profile
+
+
