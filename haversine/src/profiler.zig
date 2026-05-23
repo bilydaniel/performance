@@ -3,17 +3,20 @@ const Profiling = @import("profiling.zig");
 
 pub var profiler: Profiler = undefined;
 var parent: u32 = 0;
-var counter: u32 = 1;
+var anchorCounter: u32 = 1;
 const profilerEnabled = true;
 
 pub var map: std.AutoHashMap(u64, u32) = undefined;
 
-//TODO add name as comptime
-pub fn timeBlock(name: []const u8, src: std.builtin.SourceLocation) Block {
-    return timeBlockBandwith(name, src, 0);
+pub fn timeFunction(comptime src: std.builtin.SourceLocation) Block {
+    return timeBlock(src.fn_name);
 }
 
-pub fn timeBlockBandwith(name: []const u8, src: std.builtin.SourceLocation, byte_count: u64) Block {
+pub fn timeBlock(comptime name: []const u8) Block {
+    return timeBlockBandwith(name, 0);
+}
+
+pub fn timeBlockBandwith(comptime name: []const u8, byte_count: u64) Block {
     if (!profilerEnabled) {
         return Block{
             .ParentIndex = 0,
@@ -23,28 +26,20 @@ pub fn timeBlockBandwith(name: []const u8, src: std.builtin.SourceLocation, byte
             .OldTSCElapsedInclusive = 0,
         };
     }
-    var hasher = std.hash.Wyhash.init(0);
-    hasher.update(src.file);
-    var AnchorIndex: u32 = 0;
 
-    var line_buf: [16]u8 = undefined;
-    const line_str = std.fmt.bufPrint(&line_buf, "{d}", .{src.line}) catch "invalid";
+    // static variable hack
+    const static = struct {
+        var index: u32 = 0;
+        var _name = name; // name is here just to force the compiler to make separate instances of the struct, otherwise there is only one and i have only one index value for all the functions
+    };
 
-    hasher.update(line_str);
-    const key_hash = hasher.final();
-
-    if (map.get(key_hash)) |value| {
-        AnchorIndex = value;
-    } else {
-        AnchorIndex = map.count() + 1;
-        map.put(key_hash, AnchorIndex) catch {};
+    if (static.index == 0) {
+        static.index = anchorCounter;
+        anchorCounter += 1;
+        std.debug.print("anchor: {}\n", .{anchorCounter});
     }
 
-    return Block.start(name, AnchorIndex, byte_count);
-}
-
-pub fn timeFunction(src: std.builtin.SourceLocation) Block {
-    return timeBlock(src.fn_name, src);
+    return Block.start(name, static.index, byte_count);
 }
 
 pub fn beginProfile() void {

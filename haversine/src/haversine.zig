@@ -62,10 +62,10 @@ pub fn main() !void {
     const stat = try file.stat();
     const fileSize = stat.size;
 
-    const read_file = Profiler.timeBlock("Read file ", @src());
+    const read_file = Profiler.timeBlock("Read file ");
 
     std.debug.print("file_size: {}", .{fileSize});
-    const read_block = Profiler.timeBlockBandwith("read_bandwith", @src(), fileSize);
+    const read_block = Profiler.timeBlockBandwith("read_bandwith", fileSize);
 
     const inputJSON = try file.readToEndAlloc(allocator, fileSize);
     read_block.end();
@@ -97,7 +97,7 @@ pub fn main() !void {
     var sum: f64 = 0;
     var count: i64 = 0;
 
-    const sum_block = Profiler.timeBlock("Sum", @src());
+    const sum_block = Profiler.timeBlock("Sum");
     for (parsed_values.items) |pair| {
         //print("{d} {d} {d} {d}\n", pair);
         sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);

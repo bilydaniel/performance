@@ -229,6 +229,13 @@ pretty much we dont count cycles any more, its just a very precise clock time
 no way to find the frequency for RDTSC easily
 we have to meassure a known counter (for examle from OS) using RDTSC and use
 that to figure out the frequency
+rdtsc is fixed nowadays(doesent change during the run)
+
+hyperviser can fuck with the query performance frequency(even after migrating to a different cpu the frequency stays on the old one)
+
+RDTSCP -> makes sure that it executes in order
+
+both RDTSC and RDTSCP is very course(like 40 cycles)
 
 query performance counter(query performance frequency) on windows
 
@@ -241,19 +248,3 @@ we care more about the number of cycles than real time
 kinds of measurements:
     clock time - 
     
-file_size: 10261221sum: 733678346.3010741
-count: 100000
-average: 7336.783463010742
-Total time: 20099.2349ms (3294234240)
-	main[1]: 189948(0.00%)
-		(100.00%) with children
-	Read file [1]: 27258(0.00%)
-		(0.08%) with children
-	read_bandwith[1]: 52560684(0.08%)
-		9.786mb at 0.60gb/s
-	parseHaversinePairs[1]: 151140(0.00%)
-		(99.85%) with children
-	parseJSON[1]: 34603560519(52.26%)
-	Lookup and convert[1]: 186173031(0.28%)
-	FreeJSON[1]: 31319806188(47.30%)
-	Sum[1]: 49029948(0.07%)

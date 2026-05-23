@@ -436,7 +436,7 @@ pub fn parseHaversinePairs(allocator: std.mem.Allocator, input: []u8, parsed_val
 
     const JSON = try parseJSON(input, allocator);
 
-    const convert = Profiler.timeBlock("Lookup and convert", @src());
+    const convert = Profiler.timeBlock("Lookup and convert");
     const pairsArray = lookupElement(JSON, "pairs");
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
@@ -454,7 +454,7 @@ pub fn parseHaversinePairs(allocator: std.mem.Allocator, input: []u8, parsed_val
     }
     convert.end();
 
-    const json_block = Profiler.timeBlock("FreeJSON", @src());
+    const json_block = Profiler.timeBlock("FreeJSON");
     freeJson(JSON, allocator);
     json_block.end();
 
