@@ -248,3 +248,31 @@ them, but its cumbersome
 we need easy to use tool to be motivated to profile
 
 
+//TODO: start using debugger as a way to understand what the code does, start stepping through the code just out of habbit, all the best programmers do this
+
+could use enums with @tagName for indexing profiler blocks, or just j_blow style(make global variables)
+
+
+we need a tool that is easy to deploy, fairly accurate and low overhead
+
+nested blocks, child has to subtract its time from its parent, its still nice to see the overall time, we just need to show that the childs time is part of the parents time and its not counted twice
+global variable to track in which block we are, after finishing i can tell the parent block to subtract my time, just need to add a variable in the anchor that counts the TSC elapsed for children
+
+remember my parent + put myself as the new parent, at the end i put my parent as the current parent
+
+the with children value break when the function is recursive(block is its own child)
+do all the writes into a structure in one go if possible
+group your writes and reads(writes are more important)
+
+profiling overhead
+be careful of profiling everything at the same time(caseys test 9s of run time when profiling some function vs 26s of run time when profiling everything)
+
+if profile is affecting the runtime, the total run time will increase and the times of the function that are profiling alot(loops), will get higher percentage than they had before
+
+make sure you are easily able to compile the profiler out, so that its not in the production code and you can compare run with/without the profiler to see how much overhead there is
+
+make higher level profiles, dont profile in a loop, profile around the loop
+
+
+
+

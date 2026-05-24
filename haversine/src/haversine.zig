@@ -36,11 +36,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
 
-    const pa = std.heap.page_allocator;
-
     //TODO: init / deinit map in profiler
-    Profiler.map = std.AutoHashMap(u64, u32).init(pa);
-    defer Profiler.map.deinit();
 
     Profiler.beginProfile();
     const time_block = Profiler.timeFunction(@src());

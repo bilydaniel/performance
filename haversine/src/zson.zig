@@ -322,8 +322,6 @@ const JsonToken = struct {
 };
 
 fn parseJSON(input: []u8, allocator: std.mem.Allocator) !?*JsonElement {
-    const time_block = Profiler.timeFunction(@src());
-    defer time_block.end();
     var json_parser = try JsonParser.init(allocator, input);
 
     const json_token = json_parser.getJsonToken();
@@ -430,13 +428,10 @@ pub fn convertElementToF64(element: *JsonElement, name: []const u8) f64 {
 }
 
 pub fn parseHaversinePairs(allocator: std.mem.Allocator, input: []u8, parsed_values: *std.ArrayList(Pair)) !u64 {
-    const time_block = Profiler.timeFunction(@src());
-    defer time_block.end();
     var pair_count: u64 = 0;
 
     const JSON = try parseJSON(input, allocator);
 
-    const convert = Profiler.timeBlock("Lookup and convert");
     const pairsArray = lookupElement(JSON, "pairs");
     if (pairsArray) |pairs| {
         var element = pairs.firstSubElement;
@@ -452,11 +447,8 @@ pub fn parseHaversinePairs(allocator: std.mem.Allocator, input: []u8, parsed_val
             try parsed_values.append(allocator, pair);
         }
     }
-    convert.end();
 
-    const json_block = Profiler.timeBlock("FreeJSON");
     freeJson(JSON, allocator);
-    json_block.end();
 
     return pair_count;
 }

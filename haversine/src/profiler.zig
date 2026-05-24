@@ -4,9 +4,7 @@ const Profiling = @import("profiling.zig");
 pub var profiler: Profiler = undefined;
 var parent: u32 = 0;
 var anchorCounter: u32 = 1;
-const profilerEnabled = true;
-
-pub var map: std.AutoHashMap(u64, u32) = undefined;
+const profilerEnabled = true; //TODO: make it better for disabled profiler
 
 pub fn timeFunction(comptime src: std.builtin.SourceLocation) Block {
     return timeBlock(src.fn_name);
@@ -19,15 +17,16 @@ pub fn timeBlock(comptime name: []const u8) Block {
 pub fn timeBlockBandwith(comptime name: []const u8, byte_count: u64) Block {
     if (!profilerEnabled) {
         return Block{
-            .ParentIndex = 0,
-            .AnchorIndex = 0,
-            .Label = "",
-            .StartTSC = 0,
-            .OldTSCElapsedInclusive = 0,
+            .parentIndex = 0,
+            .anchorIndex = 0,
+            .label = "",
+            .startTSC = 0,
+            .oldTSCElapsedInclusive = 0,
         };
     }
 
     // static variable hack
+    // TODO: maybe try to make a version without the hack and compare
     const static = struct {
         var index: u32 = 0;
         var _name = name; // name is here just to force the compiler to make separate instances of the struct, otherwise there is only one and i have only one index value for all the functions
@@ -36,7 +35,6 @@ pub fn timeBlockBandwith(comptime name: []const u8, byte_count: u64) Block {
     if (static.index == 0) {
         static.index = anchorCounter;
         anchorCounter += 1;
-        std.debug.print("anchor: {}\n", .{anchorCounter});
     }
 
     return Block.start(name, static.index, byte_count);
@@ -75,8 +73,8 @@ const Profiler = struct {
 };
 
 const Anchor = struct {
-    TSCElapsedExclusive: i64,
-    TSCElapsedInclusive: i64,
+    TSCElapsedExclusive: i64, //excludes the children
+    TSCElapsedInclusive: i64, //includes the childern
     hitCount: u64,
     label: []const u8,
     processedByteCount: u64,
@@ -109,7 +107,7 @@ const Block = struct {
     startTSC: i64,
     parentIndex: u32,
     anchorIndex: u32,
-    oldTSCElapsedInclusive: i64,
+    oldTSCElapsedInclusive: i64, // fixes wrong meassurements of recursive calls, overwriting the bad values from the recursive children
 
     pub fn start(label: []const u8, anchorIndex: u32, byteCount: u64) Block {
         var anchor = &profiler.anchors[anchorIndex];
@@ -130,12 +128,16 @@ const Block = struct {
             return;
         }
         const elapsed: i64 = @as(i64, @intCast(Profiling.readCPUTimer())) - this.startTSC;
+
         parent = this.parentIndex;
 
+        // exlude the childs time
         var parentAnchor = &profiler.anchors[this.parentIndex];
-        var anchor = &profiler.anchors[this.anchorIndex];
         parentAnchor.TSCElapsedExclusive -= elapsed;
+
+        var anchor = &profiler.anchors[this.anchorIndex];
         anchor.TSCElapsedExclusive += elapsed;
+
         anchor.TSCElapsedInclusive = this.oldTSCElapsedInclusive + elapsed;
         anchor.hitCount += 1;
         anchor.label = this.label;
