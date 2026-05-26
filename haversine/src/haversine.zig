@@ -58,14 +58,23 @@ pub fn main() !void {
     const stat = try file.stat();
     const fileSize = stat.size;
 
-    const read_file = Profiler.timeBlock("Read file ");
-
     std.debug.print("file_size: {}", .{fileSize});
+
+    const inputJSON = try allocator.alloc(u8, fileSize);
+    var buffer: [4096 * 4]u8 = undefined; // the bigger buffer the faster it seems to be
+    var reader = file.reader(&buffer);
+
     const read_block = Profiler.timeBlockBandwith("read_bandwith", fileSize);
 
-    const inputJSON = try file.readToEndAlloc(allocator, fileSize);
+    //const inputJSON = try reader.interface.readAlloc(allocator, fileSize);
+    try reader.interface.readSliceAll(inputJSON);
+    //TODO: casey has allocation and reading split, he is measuring only the reading
+    //so maybe split it too
+
+    //const inputJSON = try file.readToEndAlloc(allocator, fileSize);
+
     read_block.end();
-    read_file.end();
+
     defer allocator.free(inputJSON);
     //Prof_MiscSetup = profiling.ReadCPUTimer();
 
@@ -90,10 +99,11 @@ pub fn main() !void {
 
     //print("{}\n", .{pairs_count});
 
+    const sum_block = Profiler.timeBlockBandwith("Sum", parsed_values.items.len * @sizeOf(zson.Pair));
+
     var sum: f64 = 0;
     var count: i64 = 0;
 
-    const sum_block = Profiler.timeBlock("Sum");
     for (parsed_values.items) |pair| {
         //print("{d} {d} {d} {d}\n", pair);
         sum += haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS);

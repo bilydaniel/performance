@@ -273,6 +273,25 @@ make sure you are easily able to compile the profiler out, so that its not in th
 
 make higher level profiles, dont profile in a loop, profile around the loop
 
+my cpu keeps being underclocked, slower times than casey
 
+we need to measure throughtput for varius reasons
+is the data hot or cold?
+i should have alook at the zig.time.Timer
 
+repetition testing:
+    gonna get alot more intricate, dont get discouraged :)
+    gonna go through alot of details, dont need to remember everything, understanding is important now, do more research when needed
+    
+    OS cashes files in memory so it doesent have to go to the disk
+
+    what is the fastest something can run? - repetition testing helps with this question
+    enclose a timed block in a loop, try many many times and see the best result
+    removes variability of the system(what is cashed, what is happening on the os, etc.)
+
+    run test for 10s, if you find a new minimum, reset the timer
+
+    //TODO: make a repetition tester, test opening files
+    
+    when using threads, send a struct to that thread that controlls the thread, send in the data that are for that thread only, like an array or something, can be profiler samples etc.
 

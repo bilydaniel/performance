@@ -81,7 +81,7 @@ const Anchor = struct {
 
     pub fn printTimeElapsed(this: Anchor, totalElapsed: i64, cpufreq: u64) void {
         const percent = 100 * @as(f64, @floatFromInt(this.TSCElapsedExclusive)) / @as(f64, @floatFromInt(totalElapsed));
-        std.debug.print("\t{s}[{d}]: {d}({d:.2}%)", .{ this.label, this.hitCount, this.TSCElapsedExclusive, percent });
+        std.debug.print("\t{s}[{d}]: {d}({d:.2}%) - {d:.4}ms", .{ this.label, this.hitCount, this.TSCElapsedExclusive, percent, 1000 * @as(f64, @floatFromInt(this.TSCElapsedExclusive)) / @as(f64, @floatFromInt(cpufreq)) });
 
         if (this.TSCElapsedExclusive != this.TSCElapsedInclusive) {
             const percentInclusive = 100 * @as(f64, @floatFromInt(this.TSCElapsedInclusive)) / @as(f64, @floatFromInt(totalElapsed));

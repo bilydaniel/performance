@@ -28,8 +28,22 @@ pub fn build(b: *std.Build) void {
     });
     haversine.linkLibC();
 
+    const readOverhead = b.addExecutable(.{
+        .use_llvm = true,
+        .name = "read_overhead",
+        .root_module = b.createModule(.{
+            // Fixed: changed from src/generator.zig to src/haversine.zig
+            .root_source_file = b.path("src/read_overhead_main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{},
+        }),
+    });
+    readOverhead.linkLibC();
+
     b.installArtifact(generator);
     b.installArtifact(haversine);
+    b.installArtifact(readOverhead);
 
     // GENERATOR RUN STEP
     const run_generator_step = b.step("run_generator", "Run the generator application");
@@ -52,4 +66,15 @@ pub fn build(b: *std.Build) void {
         run_haversine_cmd.addArgs(args);
     }
     run_haversine_step.dependOn(&run_haversine_cmd.step);
+
+    // READ OVERHEAD RUN STEP
+    const run_read_overhead_step = b.step("run_read_overhead", "");
+    const run_read_overhead_cmd = b.addRunArtifact(readOverhead);
+
+    run_read_overhead_cmd.step.dependOn(b.getInstallStep());
+
+    if (b.args) |args| {
+        run_read_overhead_cmd.addArgs(args);
+    }
+    run_read_overhead_step.dependOn(&run_read_overhead_cmd.step);
 }
