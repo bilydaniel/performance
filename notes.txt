@@ -295,3 +295,5 @@ repetition testing:
     
     when using threads, send a struct to that thread that controlls the thread, send in the data that are for that thread only, like an array or something, can be profiler samples etc.
 
+    //TODO: learn linear algebra
+
