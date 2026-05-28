@@ -1,2 +1,3 @@
 .zig-cache/
 ./haversine/.zig-cache/
+./haversine/./haversine/pairs.json

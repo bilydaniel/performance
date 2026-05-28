@@ -4,14 +4,28 @@ const ReadTest = @import("read_test.zig");
 const Profiling = @import("profiling.zig");
 
 const testFunction = struct {
-    name: []u8,
-    function: *const fn (repetitionTester: *RepetitionTester.Tester, readParameters: *ReadTest.ReadParameters) void,
+    name: []const u8,
+    function: *const fn (repetitionTester: *RepetitionTester.RepetitionTester, readParameters: *ReadTest.ReadParameters) void,
 };
 
-const testFunctions = [_]testFunction{.{
-    .name = "asd",
-    .function = main, //TODO:
-}};
+const testFunctions = [_]testFunction{
+    .{
+        .name = "readViaReadAll",
+        .function = ReadTest.readViaReadAll,
+    },
+    .{
+        .name = "readViaReadSliceAllTinyBuffer",
+        .function = ReadTest.readViaReadSliceAllTinyBuffer,
+    },
+    .{
+        .name = "readViaReadSliceAll1K",
+        .function = ReadTest.readViaReadSliceAll1K,
+    },
+    .{
+        .name = "readViaReadSliceAll16K",
+        .function = ReadTest.readViaReadSliceAll16K,
+    },
+};
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -19,7 +33,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
 
     const cpuFreq = Profiling.estimateCPUTimerFreq();
-    const fileName = "pairs.json";
+    const fileName: []const u8 = "pairs.json";
 
     var file = try std.fs.cwd().openFile(fileName, .{});
     defer file.close();
@@ -27,19 +41,26 @@ pub fn main() !void {
     const stat = try file.stat();
     const fileSize = stat.size;
 
+    std.debug.print("fileSize: {d}\n", .{fileSize});
+
     const inputJSON = try allocator.alloc(u8, fileSize);
     defer allocator.free(inputJSON);
 
-    var buffer: [4096 * 4]u8 = undefined; // the bigger buffer the faster it seems to be
-    var reader = file.reader(&buffer);
+    const destination = try allocator.alloc(u8, fileSize);
 
-    //const inputJSON = try reader.interface.readAlloc(allocator, fileSize);
-    try reader.interface.readSliceAll(inputJSON);
-
-    //TODO: @continue
-
-    const readParameters: ReadTest.ReadParameters = .{
-        .dest = try allocator.alloc(u8, fileSize),
-        .name = fileName,
+    var readParameters: ReadTest.ReadParameters = .{
+        .dest = destination,
+        .fileName = fileName,
     };
+
+    const testers = [_]RepetitionTester.RepetitionTester{.{}} ** testFunctions.len;
+
+    while (true) {
+        for (testFunctions, 0..) |testFunc, i| {
+            var tester = testers[i];
+            std.debug.print("\n--- {s} ---\n", .{testFunc.name});
+            tester.newTestWave(readParameters.dest.len, cpuFreq, 10);
+            testFunc.function(&tester, &readParameters);
+        }
+    }
 }

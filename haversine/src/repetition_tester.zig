@@ -22,28 +22,32 @@ const RepetitionTestResults = struct {
         std.debug.print("\n", .{});
 
         if (this.testCount > 0) {
-            printTime("Max", this.totalTime / this.testCount, cpuFreq, byteCount);
+            printTime("Avg", @as(f64, @floatFromInt(this.totalTime)) / @as(f64, @floatFromInt(this.testCount)), cpuFreq, byteCount);
             std.debug.print("\n", .{});
         }
     }
 };
 
-const RepetitionTester = struct {
-    targetProcessedByteCount: u64,
-    cpuFreq: u64,
-    tryForTime: u64,
-    testsStartedAt: u64,
+pub const RepetitionTester = struct {
+    targetProcessedByteCount: u64 = 0,
+    cpuFreq: u64 = 0,
+    tryForTime: u64 = 0,
+    testsStartedAt: u64 = 0,
 
-    testMode: TestMode,
-    printNewMinimums: bool,
-    openBlockCount: u32,
-    closedBlockCount: u32,
+    testMode: TestMode = .uninitialized,
+    printNewMinimums: bool = false,
+    openBlockCount: u32 = 0,
+    closedBlockCount: u32 = 0,
 
-    timeThisTest: u64,
-    bytesThisTest: u64,
-    results: RepetitionTestResults,
+    timeThisTest: u64 = 0,
+    bytesThisTest: u64 = 0,
+    results: RepetitionTestResults = .{},
 
-    pub fn err(this: *@This(), msg: []u8) void {
+    pub fn init() @This() {
+        return @This();
+    }
+
+    pub fn err(this: *@This(), msg: []const u8) void {
         this.testMode = .err;
         std.debug.print("ERROR: {s}\n", .{msg});
     }
@@ -73,12 +77,12 @@ const RepetitionTester = struct {
 
     pub fn beginTime(this: *@This()) void {
         this.openBlockCount += 1;
-        this.timeThisTest -= Profiling.readCPUTimer();
+        this.timeThisTest -%= Profiling.readCPUTimer();
     }
 
     pub fn endTime(this: *@This()) void {
         this.closedBlockCount += 1;
-        this.timeThisTest += Profiling.readCPUTimer();
+        this.timeThisTest +%= Profiling.readCPUTimer();
     }
 
     pub fn countBytes(this: *@This(), byteCount: u64) void {
@@ -99,10 +103,42 @@ const RepetitionTester = struct {
                 }
 
                 if (this.testMode == .testing) {
-                    //TODO: @continue
+                    const elapsedTime = this.timeThisTest;
+
+                    this.results.testCount += 1;
+                    this.results.totalTime += elapsedTime;
+
+                    if (this.results.maxTime < elapsedTime) {
+                        this.results.maxTime = elapsedTime;
+                    }
+
+                    if (this.results.minTime > elapsedTime) {
+                        this.results.minTime = elapsedTime;
+
+                        // reset the time if min was found
+                        this.testsStartedAt = currTime;
+
+                        if (this.printNewMinimums) {
+                            printTime("Min", @floatFromInt(this.results.minTime), this.cpuFreq, this.bytesThisTest);
+                            std.debug.print("               \r", .{});
+                        }
+                    }
+
+                    this.openBlockCount = 0;
+                    this.closedBlockCount = 0;
+                    this.timeThisTest = 0;
+                    this.bytesThisTest = 0;
                 }
             }
+
+            if ((currTime - this.testsStartedAt) > this.tryForTime) {
+                this.testMode = .completed;
+                std.debug.print("                                                          \r", .{});
+                this.results.print(this.cpuFreq, this.targetProcessedByteCount);
+            }
         }
+
+        return this.testMode == .testing;
     }
 };
 
@@ -115,7 +151,7 @@ fn secondsFromCpuTime(cpuTime: f64, cpuFreq: u64) f64 {
 }
 
 //TODO: casey has a second version with cpuTime: u64
-fn printTime(label: []u8, cpuTime: f64, cpuFreq: u64, byteCount: u64) void {
+fn printTime(label: []const u8, cpuTime: f64, cpuFreq: u64, byteCount: u64) void {
     std.debug.print("{s}: {d:.1}", .{ label, cpuTime });
 
     if (cpuFreq > 0) {
@@ -124,7 +160,7 @@ fn printTime(label: []u8, cpuTime: f64, cpuFreq: u64, byteCount: u64) void {
 
         if (byteCount > 0) {
             const gb = 1024 * 1024 * 1024;
-            const bestBandwith = byteCount / (gb * seconds);
+            const bestBandwith = @as(f64, @floatFromInt(byteCount)) / (gb * seconds);
             std.debug.print(" {d}gb/s", .{bestBandwith});
         }
     }
