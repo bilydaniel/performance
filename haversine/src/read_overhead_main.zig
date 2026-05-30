@@ -18,19 +18,16 @@ const testFunctions = [_]testFunction{
         .function = ReadTest.readViaReadSliceAllTinyBuffer,
     },
     .{
-        .name = "readViaReadSliceAll1K",
-        .function = ReadTest.readViaReadSliceAll1K,
-    },
-    .{
         .name = "readViaReadSliceAll16K",
         .function = ReadTest.readViaReadSliceAll16K,
     },
 };
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    defer _ = gpa.deinit();
+    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // const allocator = gpa.allocator();
+    //
+    // defer _ = gpa.deinit();
 
     const cpuFreq = Profiling.estimateCPUTimerFreq();
     const fileName: []const u8 = "pairs.json";
@@ -43,24 +40,34 @@ pub fn main() !void {
 
     std.debug.print("fileSize: {d}\n", .{fileSize});
 
-    const inputJSON = try allocator.alloc(u8, fileSize);
-    defer allocator.free(inputJSON);
-
-    const destination = try allocator.alloc(u8, fileSize);
+    const destination = try std.heap.page_allocator.alloc(u8, fileSize);
+    //defer std.heap.page_allocator.free(destination);
+    //const destination = try allocator.alloc(u8, fileSize);
 
     var readParameters: ReadTest.ReadParameters = .{
         .dest = destination,
         .fileName = fileName,
+        .allocType = .none,
     };
 
-    const testers = [_]RepetitionTester.RepetitionTester{.{}} ** testFunctions.len;
+    // const types = std.meta.fields(ReadTest.AllocType);
+    // const testers = [_][types.len]RepetitionTester.RepetitionTester{.{}} ** testFunctions.len;
+
+    const types = std.meta.fields(ReadTest.AllocType);
+    const tester_row = [1]RepetitionTester.RepetitionTester{.{}} ** types.len;
+    const testers = [1][types.len]RepetitionTester.RepetitionTester{tester_row} ** testFunctions.len;
 
     while (true) {
         for (testFunctions, 0..) |testFunc, i| {
-            var tester = testers[i];
-            std.debug.print("\n--- {s} ---\n", .{testFunc.name});
-            tester.newTestWave(readParameters.dest.len, cpuFreq, 10);
-            testFunc.function(&tester, &readParameters);
+            const allocTypes = std.meta.fields(ReadTest.AllocType);
+            inline for (allocTypes, 0..) |allocType, j| {
+                readParameters.allocType = @enumFromInt(allocType.value);
+                var tester = testers[i][j];
+                std.debug.print("\n--- {s} ---\n", .{testFunc.name});
+                std.debug.print("{s}\n", .{allocType.name});
+                tester.newTestWave(readParameters.dest.len, cpuFreq, 10);
+                testFunc.function(&tester, &readParameters);
+            }
         }
     }
 }

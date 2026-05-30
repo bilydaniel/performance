@@ -1,6 +1,8 @@
 const std = @import("std");
 const c = @cImport(@cInclude("sys/time.h"));
 
+const osMetrics = struct { ini };
+
 pub fn readCPUTimer() u64 {
     var high: u64 = 0;
     var low: u64 = 0;
@@ -19,6 +21,12 @@ pub fn readOSTimer() u64 {
     var value: c.timeval = undefined;
     _ = c.gettimeofday(&value, null);
     return 1_000_000 * @as(u64, @intCast(value.tv_sec)) + @as(u64, @intCast(value.tv_usec));
+}
+
+fn readOSPageFaultCount() u64 {
+    var usage: std.posix.rusage = undefined;
+    std.posix.getrusage(std.posix.rusage.SELF, &usage);
+    return @intCast(usage.minflt + usage.majflt);
 }
 
 pub fn estimateCPUTimerFreq() u64 {

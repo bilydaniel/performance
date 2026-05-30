@@ -297,4 +297,31 @@ repetition testing:
 
     //TODO: learn linear algebra
 
+    the first read in repetition testing was low because it was the first time we used the allocated memory, i dont get the slow down in zig tho, no idea why
+    seems like zigs general allocator zeroes the memory out, meaning the page fault happens there and its not in the timing, gonna try to use page allocator, that doesent zero it out
+    using page allocator, it doesent seem to change, the slowdown doesent seem to show up, gonna keep testing it
+    smaller file size helped, the difference is now way more noticable, also linux has this stuff more optimized so its not that noticable but its there
 
+you can track memory the same way we profiled, you can do logs or just a table
+    
+
+//TODO: what is thread local storage? its dependant on OS, so overhead is varied
+
+page faults:
+    virtual memory if too much memory is used, swap memory to disk
+    memory protection - process cannot read whatever memory it wants
+    cpu translated virtual memory to physical(address translation tables)
+    translation lookaside buffe(TLB), cashe for translations
+    malloc goes through OS, OS has to figure out the virtual address plus the physical address andh as to maintain the translation, managed in pages
+    on windows, pages are usually 4k(4K chunks, not floating)
+    allocation are also in pages, always allocates full pages, even if you ask for 1 byte, you get a page
+    OS gives a page, malloc then suballocates and gives you the size you wanted
+    processing of memory is lazy 
+
+    virtual address get lazyli allocated, not maped to physical, because you may not use it / need that much etc. when you go to read / write then you get an interrupt(page fault) OS wakes up and the memory actually gets mapped to RAM
+
+    all of this is why we get so many page faults when using the read, we are reading about 1GB into the malloced memory, so every 4K there is a page fault, the os has to wake up and figure out the mapping
+
+    unless we free the memory or get paged out, we dont have to pay this slow down again
+
+    linux has a zero page that everything get mapped to unless you write(when you only read there should be zeroes anyway)
