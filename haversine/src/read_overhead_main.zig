@@ -10,6 +10,10 @@ const testFunction = struct {
 
 const testFunctions = [_]testFunction{
     .{
+        .name = "writeToAll", // not actual reading
+        .function = ReadTest.writeToAll,
+    },
+    .{
         .name = "readViaReadAll",
         .function = ReadTest.readViaReadAll,
     },

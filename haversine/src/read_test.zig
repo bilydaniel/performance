@@ -40,22 +40,21 @@ pub fn readViaReadSliceAllTinyBuffer(tester: *RepetitionTester.RepetitionTester,
         };
         defer file.close();
         var fileBuffer = readParams.dest;
-        handleAlloc(readParams, &fileBuffer);
 
-        const destBuffer = readParams.dest;
+        handleAlloc(readParams, &fileBuffer);
 
         var buffer: [10]u8 = undefined; // the bigger buffer the faster it seems to be
         var reader = file.reader(&buffer);
 
         tester.beginTime();
-        reader.interface.readSliceAll(destBuffer) catch {
+        reader.interface.readSliceAll(fileBuffer) catch {
             tester.endTime();
             tester.err("error reading file\n");
             return;
         };
         tester.endTime();
 
-        tester.countBytes(destBuffer.len);
+        tester.countBytes(fileBuffer.len);
         handleDealloc(readParams, &fileBuffer);
     }
 }
@@ -70,20 +69,18 @@ pub fn readViaReadSliceAll16K(tester: *RepetitionTester.RepetitionTester, readPa
         var fileBuffer = readParams.dest;
         handleAlloc(readParams, &fileBuffer);
 
-        const destBuffer = readParams.dest;
-
         var buffer: [1024 * 16]u8 = undefined; // the bigger buffer the faster it seems to be
         var reader = file.reader(&buffer);
 
         tester.beginTime();
-        reader.interface.readSliceAll(destBuffer) catch {
+        reader.interface.readSliceAll(fileBuffer) catch {
             tester.endTime();
             tester.err("error reading file\n");
             return;
         };
         tester.endTime();
 
-        tester.countBytes(destBuffer.len);
+        tester.countBytes(fileBuffer.len);
         handleDealloc(readParams, &fileBuffer);
     }
 }
@@ -99,17 +96,31 @@ pub fn readViaReadAll(tester: *RepetitionTester.RepetitionTester, readParams: *R
         var fileBuffer = readParams.dest;
         handleAlloc(readParams, &fileBuffer);
 
-        const destBuffer = readParams.dest;
-
         tester.beginTime();
-        _ = file.readAll(destBuffer) catch {
+        _ = file.readAll(fileBuffer) catch {
             tester.endTime();
             tester.err("error reading file\n");
             return;
         };
         tester.endTime();
 
-        tester.countBytes(destBuffer.len);
+        tester.countBytes(fileBuffer.len);
         handleDealloc(readParams, &fileBuffer);
+    }
+}
+
+pub fn writeToAll(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        for (0..fileBuffer.len) |i| {
+            fileBuffer[i] = @truncate(i);
+        }
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
     }
 }

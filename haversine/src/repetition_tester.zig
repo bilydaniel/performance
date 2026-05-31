@@ -35,13 +35,17 @@ const Value = struct {
     }
 
     pub fn add(this: *@This(), comptime field: ValueType, value: u64) void {
-        this.e[@intFromEnum(field)] += value;
+        this.e[@intFromEnum(field)] +%= value;
+    }
+
+    pub fn sub(this: *@This(), comptime field: ValueType, value: u64) void {
+        this.e[@intFromEnum(field)] -%= value;
     }
 
     pub fn print(this: @This(), cpuFreq: u64, label: []const u8) void {
-        const testCount = this.e.get(.test_count); //[@intFromEnum(.test_count)];
+        const testCount = this.get(.test_count); //[@intFromEnum(.test_count)];
 
-        var divisor = 1;
+        var divisor: u64 = 1;
         if (testCount > 0) {
             divisor = testCount;
         }
@@ -51,20 +55,20 @@ const Value = struct {
             e[i] = @as(f64, @floatFromInt(this.e[i])) / @as(f64, @floatFromInt(divisor));
         }
 
-        std.debug.print("{s}: {d:.1}", .{ label, e.get(.cpu_time) });
+        std.debug.print("{s}: {d:.1}", .{ label, e[@intFromEnum(ValueType.cpu_time)] });
         if (cpuFreq > 0) {
-            const seconds = secondsFromCpuTime(e.get(.cpu_time), cpuFreq);
-            std.debug.print(" ({d}ms)", .{1000 * seconds});
+            const seconds = secondsFromCpuTime(e[@intFromEnum(ValueType.cpu_time)], cpuFreq);
+            std.debug.print(" ({d:.4}ms)", .{1000 * seconds});
 
-            if (e.get(.byte_count) > 0) {
+            if (e[@intFromEnum(ValueType.byte_count)] > 0) {
                 const gb = 1024 * 1024 * 1024;
-                const bestBandwith = @as(f64, @floatFromInt(e.get(.byte_count))) / (gb * seconds);
-                std.debug.print(" {d}gb/s", .{bestBandwith});
+                const bestBandwith = e[@intFromEnum(ValueType.byte_count)] / (gb * seconds);
+                std.debug.print(" {d:.4}gb/s", .{bestBandwith});
             }
         }
 
-        if (e.get(.page_faults) > 0) {
-            std.debug.print(" PF: {d:.4} ({d:.4}k/fault)", e.get(.page_faults), e.get(.byte_count) / e.get(.page_faults) * 1024.0);
+        if (e[@intFromEnum(ValueType.page_faults)] > 0) {
+            std.debug.print(" PF: {d:.4} ({d:.4}k/fault)", .{ e[@intFromEnum(ValueType.page_faults)], e[@intFromEnum(ValueType.byte_count)] / e[@intFromEnum(ValueType.page_faults)] * 1024.0 });
         }
     }
 };
@@ -144,20 +148,25 @@ pub const RepetitionTester = struct {
         this.openBlockCount += 1;
 
         const pageFaults = Profiling.readOSPageFaultCount();
+        //std.debug.print("begin: {}\n", .{pageFaults});
         const cpuTime = Profiling.readCPUTimer();
 
-        this.thisTest.add(.page_faults, -pageFaults);
-        this.thisTest.add(.cpu_time, -cpuTime);
+        this.thisTest.sub(.page_faults, pageFaults);
+        this.thisTest.sub(.cpu_time, cpuTime);
     }
 
     pub fn endTime(this: *@This()) void {
         this.closedBlockCount += 1;
 
         const pageFaults = Profiling.readOSPageFaultCount();
+        //std.debug.print("end: {}\n", .{pageFaults});
         const cpuTime = Profiling.readCPUTimer();
+        //const oldFaults = this.thisTest.get(.page_faults);
 
         this.thisTest.add(.page_faults, pageFaults);
         this.thisTest.add(.cpu_time, cpuTime);
+
+        //std.debug.print("result: {}\n", .{pageFaults -% oldFaults});
     }
 
     pub fn countBytes(this: *@This(), byteCount: u64) void {
@@ -167,7 +176,7 @@ pub const RepetitionTester = struct {
     pub fn isTesting(this: *@This()) bool {
         if (this.testMode == .testing) {
             const currTime = Profiling.readCPUTimer();
-            const acumulator = &this.thisTest;
+            var acumulator = this.thisTest;
 
             if (this.openBlockCount > 0) {
                 if (this.openBlockCount != this.closedBlockCount) {
@@ -179,44 +188,39 @@ pub const RepetitionTester = struct {
                 }
 
                 if (this.testMode == .testing) {
-                    //TODO: @finish
-                    const elapsedTime = this.timeThisTest;
+                    //TODO: does this work?
+                    var results = &this.results;
+
                     acumulator.set(.test_count, 1);
-
                     for (0..valueTypeLen) |i| {
-                        this.results.total.e[i] += acumulator.e[i];
+                        results.total.e[i] += acumulator.e[i];
                     }
 
-                    this.results.testCount += 1;
-                    this.results.totalTime += elapsedTime;
-
-                    if (this.results.maxTime < elapsedTime) {
-                        this.results.maxTime = elapsedTime;
+                    if (results.max.get(.cpu_time) < acumulator.get(.cpu_time)) {
+                        results.max = acumulator;
                     }
 
-                    if (this.results.minTime > elapsedTime) {
-                        this.results.minTime = elapsedTime;
+                    if (results.min.get(.cpu_time) > acumulator.get(.cpu_time)) {
+                        results.min = acumulator;
 
-                        // reset the time if min was found
                         this.testsStartedAt = currTime;
 
                         if (this.printNewMinimums) {
-                            printTime("Min", @floatFromInt(this.results.minTime), this.cpuFreq, this.bytesThisTest);
-                            std.debug.print("               \r", .{});
+                            this.results.min.print(this.cpuFreq, "Min");
+                            std.debug.print("                                   \r", .{});
                         }
                     }
 
                     this.openBlockCount = 0;
                     this.closedBlockCount = 0;
-                    this.timeThisTest = 0;
-                    this.bytesThisTest = 0;
+                    this.thisTest = Value.init();
                 }
             }
 
             if ((currTime - this.testsStartedAt) > this.tryForTime) {
                 this.testMode = .completed;
                 std.debug.print("                                                          \r", .{});
-                this.results.print(this.cpuFreq, this.targetProcessedByteCount);
+                this.results.print(this.cpuFreq);
             }
         }
 
@@ -238,12 +242,12 @@ fn printTime(label: []const u8, cpuTime: f64, cpuFreq: u64, byteCount: u64) void
 
     if (cpuFreq > 0) {
         const seconds = secondsFromCpuTime(cpuTime, cpuFreq);
-        std.debug.print(" ({d}ms)", .{1000 * seconds});
+        std.debug.print(" ({d:.6}ms)", .{1000 * seconds});
 
         if (byteCount > 0) {
             const gb = 1024 * 1024 * 1024;
             const bestBandwith = @as(f64, @floatFromInt(byteCount)) / (gb * seconds);
-            std.debug.print(" {d}gb/s", .{bestBandwith});
+            std.debug.print(" {d:.6}gb/s", .{bestBandwith});
         }
     }
 }
