@@ -325,3 +325,29 @@ page faults:
     unless we free the memory or get paged out, we dont have to pay this slow down again
 
     linux has a zero page that everything get mapped to unless you write(when you only read there should be zeroes anyway)
+
+    My issue with the page fault time was that zig when in debug mode zeroes
+the memory out and so the page faults happen during allocation, switched to
+release mode and its fine
+    
+    your programming language has a memory subsystem thats usually good in
+general cases but not in specific, for example malloc free is good in general,
+but not in specific, it does suballocations (extra layer of things happening,
+no idea what happens)
+    if you tried to read the file through a smaller buffer(to reduce the page
+faults), it ends up being even slower because of the extra calls to read(that
+is also an OS call)
+
+    never put sleeps in your benchmarks, even if you dont time them, the os is
+gonna think you dont need priority, (os or cpu can throttle you)
+    
+    reuse the allocated memory as much as possible
+    os has garbage pages and zeroed pages, after free, it has to zero the
+garbage pages first and then give them to you when you allocate, for secury,
+the pages are zeroed by an idle core that can do it
+
+   if you do malloc -> free -> malloc then you can get garbage pages, because
+you own old data so its not a secury risk
+    reserving memory, commiting memory, mapping memory
+
+    stack has a guard page

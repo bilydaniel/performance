@@ -248,3 +248,106 @@ them, but its cumbersome
 we need easy to use tool to be motivated to profile
 
 
+//TODO: start using debugger as a way to understand what the code does, start stepping through the code just out of habbit, all the best programmers do this
+
+could use enums with @tagName for indexing profiler blocks, or just j_blow style(make global variables)
+
+
+we need a tool that is easy to deploy, fairly accurate and low overhead
+
+nested blocks, child has to subtract its time from its parent, its still nice to see the overall time, we just need to show that the childs time is part of the parents time and its not counted twice
+global variable to track in which block we are, after finishing i can tell the parent block to subtract my time, just need to add a variable in the anchor that counts the TSC elapsed for children
+
+remember my parent + put myself as the new parent, at the end i put my parent as the current parent
+
+the with children value break when the function is recursive(block is its own child)
+do all the writes into a structure in one go if possible
+group your writes and reads(writes are more important)
+
+profiling overhead
+be careful of profiling everything at the same time(caseys test 9s of run time when profiling some function vs 26s of run time when profiling everything)
+
+if profile is affecting the runtime, the total run time will increase and the times of the function that are profiling alot(loops), will get higher percentage than they had before
+
+make sure you are easily able to compile the profiler out, so that its not in the production code and you can compare run with/without the profiler to see how much overhead there is
+
+make higher level profiles, dont profile in a loop, profile around the loop
+
+my cpu keeps being underclocked, slower times than casey
+
+we need to measure throughtput for varius reasons
+is the data hot or cold?
+i should have alook at the zig.time.Timer
+
+repetition testing:
+    gonna get alot more intricate, dont get discouraged :)
+    gonna go through alot of details, dont need to remember everything, understanding is important now, do more research when needed
+    
+    OS cashes files in memory so it doesent have to go to the disk
+
+    what is the fastest something can run? - repetition testing helps with this question
+    enclose a timed block in a loop, try many many times and see the best result
+    removes variability of the system(what is cashed, what is happening on the os, etc.)
+
+    run test for 10s, if you find a new minimum, reset the timer
+
+    //TODO: make a repetition tester, test opening files
+    
+    when using threads, send a struct to that thread that controlls the thread, send in the data that are for that thread only, like an array or something, can be profiler samples etc.
+
+    //TODO: learn linear algebra
+
+    the first read in repetition testing was low because it was the first time we used the allocated memory, i dont get the slow down in zig tho, no idea why
+    seems like zigs general allocator zeroes the memory out, meaning the page fault happens there and its not in the timing, gonna try to use page allocator, that doesent zero it out
+    using page allocator, it doesent seem to change, the slowdown doesent seem to show up, gonna keep testing it
+    smaller file size helped, the difference is now way more noticable, also linux has this stuff more optimized so its not that noticable but its there
+
+you can track memory the same way we profiled, you can do logs or just a table
+    
+
+//TODO: what is thread local storage? its dependant on OS, so overhead is varied
+
+page faults:
+    virtual memory if too much memory is used, swap memory to disk
+    memory protection - process cannot read whatever memory it wants
+    cpu translated virtual memory to physical(address translation tables)
+    translation lookaside buffe(TLB), cashe for translations
+    malloc goes through OS, OS has to figure out the virtual address plus the physical address andh as to maintain the translation, managed in pages
+    on windows, pages are usually 4k(4K chunks, not floating)
+    allocation are also in pages, always allocates full pages, even if you ask for 1 byte, you get a page
+    OS gives a page, malloc then suballocates and gives you the size you wanted
+    processing of memory is lazy 
+
+    virtual address get lazyli allocated, not maped to physical, because you may not use it / need that much etc. when you go to read / write then you get an interrupt(page fault) OS wakes up and the memory actually gets mapped to RAM
+
+    all of this is why we get so many page faults when using the read, we are reading about 1GB into the malloced memory, so every 4K there is a page fault, the os has to wake up and figure out the mapping
+
+    unless we free the memory or get paged out, we dont have to pay this slow down again
+
+    linux has a zero page that everything get mapped to unless you write(when you only read there should be zeroes anyway)
+
+    My issue with the page fault time was that zig when in debug mode zeroes
+the memory out and so the page faults happen during allocation, switched to
+release mode and its fine
+    
+    your programming language has a memory subsystem thats usually good in
+general cases but not in specific, for example malloc free is good in general,
+but not in specific, it does suballocations (extra layer of things happening,
+no idea what happens)
+    if you tried to read the file through a smaller buffer(to reduce the page
+faults), it ends up being even slower because of the extra calls to read(that
+is also an OS call)
+
+    never put sleeps in your benchmarks, even if you dont time them, the os is
+gonna think you dont need priority, (os or cpu can throttle you)
+    
+    reuse the allocated memory as much as possible
+    os has garbage pages and zeroed pages, after free, it has to zero the
+garbage pages first and then give them to you when you allocate, for secury,
+the pages are zeroed by an idle core that can do it
+
+   if you do malloc -> free -> malloc then you can get garbage pages, because
+you own old data so its not a secury risk
+    reserving memory, commiting memory, mapping memory
+
+    stack has a guard page
