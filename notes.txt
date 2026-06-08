@@ -346,8 +346,79 @@ gonna think you dont need priority, (os or cpu can throttle you)
 garbage pages first and then give them to you when you allocate, for secury,
 the pages are zeroed by an idle core that can do it
 
-   if you do malloc -> free -> malloc then you can get garbage pages, because
+    if you do malloc -> free -> malloc then you can get garbage pages, because
 you own old data so its not a secury risk
     reserving memory, commiting memory, mapping memory
 
     stack has a guard page
+
+    is the os returning the number of actual interrupts, or just the number of pages worked on?
+
+    use std.posix.mmap to allocate
+    defer munmap
+
+    base address is the memory that should be mapped to physical, if you put zero the OS will figure out where to put it
+
+    going backward doesent batch the interupts, slower
+
+    on linux, my numbers were just linear, same amount of page faults as touches, didnt matter whether forward or backwards, no extra page faults compared to windows, timing was the same both ways
+
+four level addressing:
+what is a pointer:
+    64 bit -> 48 are used, 16 are zeroed
+    bottom 12 bits are the offset into the page(12 bits is 4k) this is the actual physical offset
+    36 bits are divided into 4 parts(9 bits per part)
+    CR3 is a register that point to the begining of the first table
+    the table is 4K
+    entries in the table are 64 bit
+    4K / 8Bytes(64bits) -> 512 -> 2^9
+    in the first table we pick the value based on the values of the first 9, that value points us to another table, in the second table we pick based on the second 9 etc...
+    the last table has pointers to the physical address
+    we can cut the 9s to make the pages bigger 21(2MB page) or 30(1GB)
+    values in tables contain extra information like if its allowed to read / write, if its the last table etc.
+
+    virtual allocations are done continously and so pointer arithmetic works just fine
+    think of it as just mapping a 48 bit continous number into some tables
+    TLB - translation lookaside buffer - cashe for pages, without this, reading pointers from memory would be incredibly slow (4 reads out of 4 page tables)
+    we only cashe the 36 bits, the 12 bit for offset are straight forward
+    better data locality also means better TLB hits(best if data is in the same page)
+    you could even get TBL bound, slowed down by the TLB missing too much
+    bigger pages would help TLB misses
+    new chips are starting to have 5 - level paging -> only 7 unused bits, another 9 bit page
+    page faults are per core, meaning if one core gets an interrupt, other cores can keep working //TODO: what if one core has a page fault, and other core then accesses the same memory, does it still faults?
+    each core has its own TLB, possibly its own processes, each core can have its separate tables
+    page table is for each process, meaning two threads on two separate cores in the same process could be using the same page tables, both could try to map the same page if they both fault on the same one, locking is needed for this
+
+    virtual alloc returns 64k alligned pointers
+    //TODO: do i want to go through all the notes?
+
+    reserving memory just makes sure nobody else uses that memory in the virtual addresses
+    commiting memory actually checks if there is enough ram
+
+every 512 pages we get extra page fault, we need to map extra page(page fault) for the tables that hold the pages
+
+//TODO: convert all the stupid calculations that use @cast and @as at the same time into just casting the variables first and then calculating, iam retarded
+
+can make circular buffer using mapping, no idea how to do that on linux, only windows was shown
+
+getwritewatch - written pages(dirty bits), clears the dirty bits
+
+sparse memory, only reserved memory (for arenas, stacks, sparse arrays etc.)
+
+page file is on the hard disk, they are there if memory cant be in ram, swapped in pages
+page tables are connected throughr physical addresses
+
+we dont usually need to care about page faults tho
+
+when reading data, dont think about it as being bound by the disk speed, disks are getting faster, and the data is usually cashed in the memory anyway
+
+when loading the file, we are doing a transfer from memory to the virtual address space of our program
+
+windows supports large pages(2MB), they dont support virtual mapping, they are locked in physical memory until released, the cant be paged out, this is a negative, but it helps with reading files, since there are gonna be no page faults, widnows just maps the whole file into physical memory
+cant really use large pages on user machines, you could lock up too much ram
+can be only done in administrator mode
+
+debuggers get access to pages of other processes because they have elevated privilages
+
+if we allocated smaller chunks, malloc would probably give us already page faulted memory, but because we allocated alot, it goes separately through the OS, malloc is a whole sub system that will manage the memory
+

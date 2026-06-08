@@ -68,7 +68,7 @@ const Value = struct {
         }
 
         if (e[@intFromEnum(ValueType.page_faults)] > 0) {
-            std.debug.print(" PF: {d:.4} ({d:.4}k/fault)", .{ e[@intFromEnum(ValueType.page_faults)], e[@intFromEnum(ValueType.byte_count)] / e[@intFromEnum(ValueType.page_faults)] * 1024.0 });
+            std.debug.print(" PF: {d:.4} ({d:.4}k/fault)", .{ e[@intFromEnum(ValueType.page_faults)], e[@intFromEnum(ValueType.byte_count)] / (e[@intFromEnum(ValueType.page_faults)] * 1024.0) });
         }
     }
 };
@@ -188,7 +188,6 @@ pub const RepetitionTester = struct {
                 }
 
                 if (this.testMode == .testing) {
-                    //TODO: does this work?
                     var results = &this.results;
 
                     acumulator.set(.test_count, 1);

@@ -124,3 +124,19 @@ pub fn writeToAll(tester: *RepetitionTester.RepetitionTester, readParams: *ReadP
         tester.endTime();
     }
 }
+
+pub fn writeToAllBackwards(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        for (0..fileBuffer.len) |i| {
+            fileBuffer[i - 1 - i] = @truncate(i);
+        }
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}

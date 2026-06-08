@@ -14,17 +14,21 @@ const testFunctions = [_]testFunction{
         .function = ReadTest.writeToAll,
     },
     .{
-        .name = "readViaReadAll",
-        .function = ReadTest.readViaReadAll,
+        .name = "writeToAllBackwards", // not actual reading
+        .function = ReadTest.writeToAll,
     },
-    .{
-        .name = "readViaReadSliceAllTinyBuffer",
-        .function = ReadTest.readViaReadSliceAllTinyBuffer,
-    },
-    .{
-        .name = "readViaReadSliceAll16K",
-        .function = ReadTest.readViaReadSliceAll16K,
-    },
+    // .{
+    //     .name = "readViaReadAll",
+    //     .function = ReadTest.readViaReadAll,
+    // },
+    // .{
+    //     .name = "readViaReadSliceAllTinyBuffer",
+    //     .function = ReadTest.readViaReadSliceAllTinyBuffer,
+    // },
+    // .{
+    //     .name = "readViaReadSliceAll16K",
+    //     .function = ReadTest.readViaReadSliceAll16K,
+    // },
 };
 
 pub fn main() !void {
