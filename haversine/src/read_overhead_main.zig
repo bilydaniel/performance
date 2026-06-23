@@ -10,13 +10,41 @@ const testFunction = struct {
 
 const testFunctions = [_]testFunction{
     .{
-        .name = "writeToAll", // not actual reading
-        .function = ReadTest.writeToAll,
+        .name = "NOP3x1AllBytes", // not actual reading
+        .function = ReadTest.nop3x1AllBytes,
     },
     .{
-        .name = "writeToAllBackwards", // not actual reading
-        .function = ReadTest.writeToAll,
+        .name = "NOP1x3AllBytes",
+        .function = ReadTest.nop1x3AllBytes,
     },
+    .{
+        .name = "NOP1x9AllBytes",
+        .function = ReadTest.nop1x9AllBytes,
+    },
+    // .{
+    //     .name = "writeToAll", // not actual reading
+    //     .function = ReadTest.writeToAll,
+    // },
+    // .{
+    //     .name = "MOVAllBytes",
+    //     .function = ReadTest.MOVAllBytes,
+    // },
+    // .{
+    //     .name = "NOPAllBytes",
+    //     .function = ReadTest.NOPAllBytes,
+    // },
+    // .{
+    //     .name = "CMPAllBytes",
+    //     .function = ReadTest.CMPAllBytes,
+    // },
+    // .{
+    //     .name = "DECAllBytes", // not actual reading
+    //     .function = ReadTest.DECAllBytes,
+    // },
+    // .{
+    //     .name = "writeToAllBackwards", // not actual reading
+    //     .function = ReadTest.writeToAll,
+    // },
     // .{
     //     .name = "readViaReadAll",
     //     .function = ReadTest.readViaReadAll,
@@ -37,6 +65,7 @@ pub fn main() !void {
     //
     // defer _ = gpa.deinit();
 
+    std.crypto
     const cpuFreq = Profiling.estimateCPUTimerFreq();
     const fileName: []const u8 = "pairs.json";
 
@@ -46,7 +75,7 @@ pub fn main() !void {
     const stat = try file.stat();
     const fileSize = stat.size;
 
-    std.debug.print("fileSize: {d}\n", .{fileSize});
+    std.debug.print("cpu: {d}\n", .{cpuFreq});
 
     const destination = try std.heap.page_allocator.alloc(u8, fileSize);
     //defer std.heap.page_allocator.free(destination);
@@ -57,9 +86,6 @@ pub fn main() !void {
         .fileName = fileName,
         .allocType = .none,
     };
-
-    // const types = std.meta.fields(ReadTest.AllocType);
-    // const testers = [_][types.len]RepetitionTester.RepetitionTester{.{}} ** testFunctions.len;
 
     const types = std.meta.fields(ReadTest.AllocType);
     const tester_row = [1]RepetitionTester.RepetitionTester{.{}} ** types.len;

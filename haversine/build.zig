@@ -37,9 +37,11 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{},
+            .strip = false,
         }),
     });
     readOverhead.linkLibC();
+    readOverhead.addAssemblyFile(b.path("src/nop_loop.o"));
 
     const pageFaults = b.addExecutable(.{
         .use_llvm = true,
@@ -81,11 +83,13 @@ pub fn build(b: *std.Build) void {
     run_haversine_step.dependOn(&run_haversine_cmd.step);
 
     // READ OVERHEAD RUN STEP
+    const install_read_overhead = b.addInstallArtifact(readOverhead, .{});
     const run_read_overhead_step = b.step("run_read_overhead", "");
     const run_read_overhead_cmd = b.addRunArtifact(readOverhead);
 
     //run_read_overhead_cmd.step.dependOn(b.getInstallStep());
 
+    run_read_overhead_cmd.step.dependOn(&install_read_overhead.step);
     if (b.args) |args| {
         run_read_overhead_cmd.addArgs(args);
     }

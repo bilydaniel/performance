@@ -9,7 +9,7 @@ pub const ReadParameters = struct {
 
 pub const AllocType = enum {
     none,
-    alloc,
+    //alloc,
 };
 
 pub fn handleAlloc(readParams: *ReadParameters, buffer: *[]u8) void {
@@ -109,15 +109,80 @@ pub fn readViaReadAll(tester: *RepetitionTester.RepetitionTester, readParams: *R
     }
 }
 
-pub fn writeToAll(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+pub noinline fn writeToAll(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
     while (tester.isTesting()) {
         var fileBuffer = readParams.dest;
         tester.beginTime();
         handleAlloc(readParams, &fileBuffer);
 
-        for (0..fileBuffer.len) |i| {
+        var i: usize = 0;
+        while (i < fileBuffer.len) : (i += 1) {
             fileBuffer[i] = @truncate(i);
         }
+        // for (0..fileBuffer.len) |i| {
+        //     fileBuffer[i] = @truncate(i);
+        // }
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+extern fn MOVAllBytesASM(count: u64, data: [*]u8) void;
+extern fn NOPAllBytesASM(count: u64) void;
+extern fn CMPAllBytesASM(count: u64) void;
+extern fn DECAllBytesASM(count: u64) void;
+
+pub noinline fn MOVAllBytes(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        MOVAllBytesASM(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn NOPAllBytes(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        NOPAllBytesASM(fileBuffer.len);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn CMPAllBytes(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        CMPAllBytesASM(fileBuffer.len);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn DECAllBytes(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        DECAllBytesASM(fileBuffer.len);
 
         tester.countBytes(fileBuffer.len);
         handleDealloc(readParams, &fileBuffer);
@@ -134,6 +199,50 @@ pub fn writeToAllBackwards(tester: *RepetitionTester.RepetitionTester, readParam
         for (0..fileBuffer.len) |i| {
             fileBuffer[i - 1 - i] = @truncate(i);
         }
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+extern fn NOP3x1AllBytes(count: u64) void;
+extern fn NOP1x3AllBytes(count: u64) void;
+extern fn NOP1x9AllBytes(count: u64) void;
+
+pub noinline fn nop3x1AllBytes(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        NOP3x1AllBytes(fileBuffer.len);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+pub noinline fn nop1x3AllBytes(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        NOP1x3AllBytes(fileBuffer.len);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+pub noinline fn nop1x9AllBytes(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        NOP1x9AllBytes(fileBuffer.len);
 
         tester.countBytes(fileBuffer.len);
         handleDealloc(readParams, &fileBuffer);

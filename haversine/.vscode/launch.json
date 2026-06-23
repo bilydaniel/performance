@@ -8,7 +8,7 @@
             "name": "Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceRoot}/zig-out/bin/haversine",
+            "program": "${workspaceRoot}/zig-out/bin/read_overhead",
             "args": [],
             "cwd": "${workspaceRoot}"
         }

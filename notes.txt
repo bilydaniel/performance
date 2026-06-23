@@ -1,5 +1,40 @@
-!!//TODO: make a dwarf fortress clone, use urizen tileset, i guess lets use goblins instead of dwarfs !!
-!!//TODO: great for learning performance, MANY things to optimize !!
+Project idea to practice performance programming:
+    - have a look at 3D assets, might try to make a 3d game based on the assets
+    - do I wanna try openGL instead of raylib?
+    - make a dwarf fortress clone, use urizen tileset, i guess lets use goblins instead of dwarfs, great for learning performance, MANY things to optimize, make a simplified version, of cours
+    - bullet hell arcade game, try to have alot of FPS, alot of enemies, bullets, effects, no idea if it would be enough tho
+    - something like noita, where each pixel is simulated, probably something about a miner / mining, no idea where iam gonna get assets tho, draw them? potential assets: https://itch.io/s/145923/dark-series-bundle
+
+Data oriented design:
+    - noel llopis: "data oriented design" - blog
+    - chandrel carruth: "efficiency with algorithms, performance with data structures" - yt
+    - mike acton: "data oriented design in c++" - yt
+
+Entities by Anton:
+    - fat struct with type and flags
+    - intrusive list / tree (firstItem + nextItem + parent)
+    - use index, not pointer
+    - static array? 0th element is a "nil"
+    - free list
+    - iterators for entities
+    - generations
+    - used slots is just a separate array of bools
+    - SoA
+
+Sean Barett wookash:
+    - ai() => input() => physics() => render()
+    - ai generates velocities for the oponents, input generate velocities for the player
+    - //TODO: watch his steams
+    - type + subtype / flags
+    - each step has its own loop
+
+chandler carruth performance:
+    race to sleep => better for battery, only way to save battery life is to turn the cpu off
+    efficiency(how much work is required by a task) comes from algorithms, improving efficiency means doing less work
+    performance(how quickly does a program do its work) comes from data structures, improving means doint work faster, pretty much no limit(bremermans limit)
+
+    getting from a hash map means hashing, dont hash over and over
+    ALWAYS do less work, go through my code and have a look
 
 
 lets make notes in terms of zig and go(try to use this at your job too)
@@ -421,4 +456,137 @@ can be only done in administrator mode
 debuggers get access to pages of other processes because they have elevated privilages
 
 if we allocated smaller chunks, malloc would probably give us already page faulted memory, but because we allocated alot, it goes separately through the OS, malloc is a whole sub system that will manage the memory
+
+memory mapping files, instead of allocating and then reading into the allocated buffer its just one call, mapviewoffile on windows, page faults just point the page into the file - sounds nice, not really usefull in practice because you dont know when are you gonna have to load up the data(when are you gonna get the page fault -> IO)
+
+HOW THE CPU WORKS:
+
+we are going to inspect the case where we wrote to all bytes just to test the page faults(it was much slower like 0.7gb/s against like 4gb/s) and see why was it so much slower, we gonna understand how does cpu work with memory
+
+how many bytes of instructions do we have to process?
+
+divide the cpu frequency by the estimated speed of reading(gb/s) to figure out how many cycles per loop iteration, because each loop write 1 byte, the amount of loops is the same as the speed of reading
+4.2 x 1000^3 / 3.5 x 1024^3 => 1.12 cycles
+
+zig build run_read_overhead -Doptimize=ReleaseFast
+
+consider returning zeroed out results instead of errors
+
+washing machine + drier is faster than combo machine, you can wash + dry at the same time if you are doing more than one batch of laundry(1 + 1 hour vs 2 hours)
+latency = the amount of time for one particular thing to finish(how long does it take for my favorite shirt to be clean)
+
+throughput asks how many jobs can i put into it in one unit of time, washer + drier can do one unit every hour, combo machine can do one unit every two hours
+
+latency is hours/op throughput is ops/hour 
+to better compare we use reciprical throughput which is flipper (also hours/op), sometimes people just say throughput instead of reciprical throughpu, so dont get confused
+
+depencency chain -> you cant dry something before you wash it
+
+the cpu has alot of slots for registers, each slot just gets named (rax, rbx etc.), so you can have rax twice, this helps paralelism (register allocation table)
+
+SIMT -> single instruction multiple threads(pretty much shaders, same code paralelised for each pixel), on gpu pretty much SIMD, just a different model to think about
+
+how much work is there for each unit?
+limiting factors: the biggest dependency chain, or the most work for one work unit
+
+our loop is mov -> inc -> cmp -> jb, everything is pretty much dependant on the inc, so the max speed is 1 loop per cycle
+we can inc mov and cmp the same value at the same time thanks to the register allocation table, there can be several versions of the same register(its just a name), each instruction can use a different version
+
+front end has a branch predictor, which predicts which branch will be taken, backend just sees a stream of instructions that it executes, backend finds out if frontend choose correctly
+
+
+frontend decodes instructions into micro ops and sends them into the backend by a queue
+frontend loads instructions from memory(and cashes), backend loads data, L2 and higher are shared for instructions and data, L1 is separate
+
+because the instructions are variable length the decoder has it pretty hard, it has to guess where the instructions begin so that it can decode multiple instruction per cycle
+
+there is a microop cashe for cashing translated instructions
+
+"and then" => "meanwhile" (mindset for instruction level paralelism), code is not executed the same way like in 8086 one after the other
+
+for memory, we care about latency and throughput
+
+branch prediction - frontend predicts jumps / calls (virtual function) and sends to the backend the predicted instructions
+
+branch misprediction - backend finds out that frontend missed and goes into panic mode, the whole queue gets evicted and backend has to wait for the fronted to send the correct instructions
+
+misprediction usually costs around 14 cycles, dependant on the amount of steps in the pipeline
+
+because of this, its many times better to do more computational work and less branches
+taking a branch(jumping) costs an extra cycle
+
+"softwate optimization guide"
+intel architecture optimazation reference manual
+amd documentation hub
+docs amd
+agner fogs optimization manuals
+
+alignment of your code in cashe lines can change the performance
+
+learn simd condition checks
+
+code alignment - code is also in cashe lines, decoding is cashed, uops are cashed, cashe lines are stored by key(pointer), if we happen to need something on the border, we have to query two cashe lines
+can cause some performance issues and throw you for a loop if not checked
+
+every good programming is running code in the debugger, start doing it too
+
+RAT - nobody knows what it stands for, probably register allocation / assignment table asigns slots from register file to names
+register file - a huge table of register slots that are named after the registers like RAX, RCX, can have many copies of the same value or many copies of the same register through time(one version with current value and one with past value), instead of move we can just rename a slot
+100 - 300 slots
+all these slots are not called separate names so that we dont have to index all of them (we would have to use like 8 bits instead of 4 for encoding one register)
+RAT has 16 entries, one for each register, name of the register -> slot in the register file
+slots dont have to contain the value yet, could be just reserved for the future result of some operation
+scheduler takes care of the timings for these results
+read just asks for a name of a register and gets back a slot
+writes dont overwrite slots, they create a new entry in the file register and redirect the entry in the RAT
+moves reg->reg  are just renames, the only limit is the translations
+
+planer(SoA) interleaved (AoS) - can have an interleaved rate(4xs 4ys 4zs)
+procedural programming, what are the procedures that are gonna exist -> what data structs are these procuders gonna need?
+write the optimal procedure -> what data format does it need?
+casey doesent do SoA, AoS or interleaved AoS
+
+allocating memory is just mapping the virtual address into physical
+
+instructions use the slots, not the actual registers, which means we can fire off one instruction and dont need to wait for the result and fire off another that uses the same register
+
+status register is also in the RAT(flags)
+
+bottle necks: memory / cashe -> branch predictor -> back end
+
+scheduler:  
+    - holds uops that has gone through the RAT and got renamed, waiting to be executed
+    - executes uop based on the real dependencies, fake ones got removed thanks to RAT, if an instruction (result in s3) is dependent on s1 and s2, it waits for s1 and s2 to be ready(filled) and then executes the next instruction
+    - keep IPS in mind, the goal is to have as many instructions running at the same time as possible
+    - connected to many execution ports(think of them as channels where you send uops to start them)
+    - each port can do only certain ops, one can do add and xor, other on can do load / store
+    - you should usually start at the execution ports, they are the hard limit, if you only have two ports that can add, you cannot do more than two adds per cycle, based on this hard limit, you can figure out the other limits
+    - load and store are both mov but are different uops(different ports, different speeds of loading / storing)
+
+
+should i learn openGL / gpu programming?
+perf on linux, xperf on windows
+
+mov al,[x]
+mov al,[x]
+is a depencency chain, because mov to a lower part is preserving the upper part(second move has to wait for the first one)
+mov rax,[x]
+mov rax,[x]
+is not a dependency chain
+
+the frontend cant issue more than one taken jump per cycle
+
+how many movs can we do a cycle, how much data can a single mov send?
+we can only do a certain amount of movs per cycle based on the execution ports, but L1 cashe can suply way more bits each cycle
+there are SIMD moves
+
+RAT and register file separate for SIMD
+SSE -> 128 bits, 4 x 32 bits, registers xmm0 - xmm15
+SSE evolved into AVX(256 bits), ymm0 - ymm15
+same evolution as general purpose registers(they are essentialy overlayed over each other) xmm is the lower half of ymm
+AVX512 -> 512 bits(kinda rare), most cpus have AVX, zmm0 - zmm31(not 15)
+I have avx512
+
+mov -> movdq[a(aligned)/u(unaligned)](double quadword, not true for 256 and more but whatever) 16 byte aligned
+
 
