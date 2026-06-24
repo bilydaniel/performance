@@ -249,3 +249,183 @@ pub noinline fn nop1x9AllBytes(tester: *RepetitionTester.RepetitionTester, readP
         tester.endTime();
     }
 }
+
+extern fn Read_x1(count: u64, data: [*]u8) void;
+extern fn Read_x2(count: u64, data: [*]u8) void;
+extern fn Read_x3(count: u64, data: [*]u8) void;
+extern fn Read_x4(count: u64, data: [*]u8) void;
+
+pub noinline fn read_x1(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_x1(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_x2(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_x2(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_x3(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_x3(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_x4(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_x4(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+extern fn Read_4x2(count: u64, data: [*]u8) void;
+extern fn Read_8x2(count: u64, data: [*]u8) void;
+extern fn Read_16x2(count: u64, data: [*]u8) void;
+extern fn Read_16x3(count: u64, data: [*]u8) void;
+extern fn Read_32x2(count: u64, data: [*]u8) void;
+extern fn Read_64x2(count: u64, data: [*]u8) void;
+
+pub noinline fn read_4x2(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_4x2(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_8x2(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_8x2(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_16x2(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_16x2(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_16x3(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_16x3(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_32x2(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_32x2(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+pub noinline fn read_64x2(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        Read_64x2(fileBuffer.len, fileBuffer.ptr);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
+
+extern fn CasheBandwidth(count: u64, data: [*]u8, mask: u64) void;
+
+pub noinline fn casheBandwidth(tester: *RepetitionTester.RepetitionTester, readParams: *ReadParameters) void {
+    while (tester.isTesting()) {
+        var fileBuffer = readParams.dest;
+        tester.beginTime();
+        handleAlloc(readParams, &fileBuffer);
+
+        // 32k 200gb/s 64k 150gb/s
+        //const mask = 0b111111111111111; // this one is 200gb, another 1 and it goes down
+        //150gb/s
+        //const mask = 0b111111111111111111; // fits l1
+        //120gb/s
+        //const mask = 0b11111111111111111111111; // fits l2
+
+        //70gb/s
+        //const mask = 0b111111111111111111111111; // fits l3
+        //20gb/s
+        const mask = 0b1111111111111111111111111; // main memory
+
+        CasheBandwidth(fileBuffer.len, fileBuffer.ptr, mask);
+
+        tester.countBytes(fileBuffer.len);
+        handleDealloc(readParams, &fileBuffer);
+        tester.endTime();
+    }
+}
