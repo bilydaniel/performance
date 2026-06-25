@@ -34,10 +34,10 @@ const testFunctions = [_]testFunction{
     //     .name = "read_32x2",
     //     .function = ReadTest.read_32x2,
     // },
-    .{
-        .name = "read_64x2",
-        .function = ReadTest.read_64x2,
-    },
+    // .{
+    //     .name = "read_64x2",
+    //     .function = ReadTest.read_64x2,
+    // },
 
     // .{
     //     .name = "read_x1",
