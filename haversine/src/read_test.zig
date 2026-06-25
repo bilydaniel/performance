@@ -415,12 +415,12 @@ pub noinline fn casheBandwidth(tester: *RepetitionTester.RepetitionTester, readP
         //150gb/s
         //const mask = 0b111111111111111111; // fits l1
         //120gb/s
-        //const mask = 0b11111111111111111111111; // fits l2
+        const mask = 0b11111111111111111111111; // fits l2
 
         //70gb/s
         //const mask = 0b111111111111111111111111; // fits l3
         //20gb/s
-        const mask = 0b1111111111111111111111111; // main memory
+        //const mask = 0b1111111111111111111111111; // main memory
 
         CasheBandwidth(fileBuffer.len, fileBuffer.ptr, mask);
 
