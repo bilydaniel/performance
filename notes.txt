@@ -591,4 +591,14 @@ I have avx512
 
 mov -> movdq[a(aligned)/u(unaligned)](double quadword, not true for 256 and more but whatever) 16 byte aligned
 
+cashe bandwidth, burst vs sustained, when we did the 3 SIMD moves at once, the
+L1 cashe is able to give enough throughput to sustain the moves, L2 might not
+etc. at L1 we might be able to issue all 3 of them each cycle, on others not,
+depends
+cashe has buffers, if we fill them up with requests, the request to the cashe
+stalls
 
+number of buffers dictates the bandwidth, the more buffers the more requests
+in flight we can have
+latency is dictated by the distance from the core
+latency and bandwidth are therefore unrelated
