@@ -1,4 +1,6 @@
 Project idea to practice performance programming:
+    - !! dwarf fortress + minecraft skyblock
+    - kerbal space program clone?
     - have a look at 3D assets, might try to make a 3d game based on the assets
     - do I wanna try openGL instead of raylib?
     - make a dwarf fortress clone, use urizen tileset, i guess lets use goblins instead of dwarfs, great for learning performance, MANY things to optimize, make a simplified version, of cours

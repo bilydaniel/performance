@@ -342,17 +342,29 @@ Read_64x2:
 ;rdi count, rsi data, rdx mask 
 global CasheBandwidth
 CasheBandwidth:
-    xor rax, rax
     xor r8, r8
-	align 64
+    mov rax, rsi
+    align 64
+
 .loop:
-    vmovdqu64 zmm0, [rsi + r8]
-    add r8, 64
-    vmovdqu64 zmm1, [rsi + r8]
-    add r8, 64
+    ;read 256 bytes
+    vmovdqu64 ymm0, [rax]
+    vmovdqu64 ymm0, [rax+0x20]
+    vmovdqu64 ymm0, [rax+0x40]
+    vmovdqu64 ymm0, [rax+0x60]
+    vmovdqu64 ymm0, [rax+0x80]
+    vmovdqu64 ymm0, [rax+0xa0]
+    vmovdqu64 ymm0, [rax+0xc0]
+    vmovdqu64 ymm0, [rax+0xe0]
+
+    add r8, 0x100
     and r8, rdx
-    add rax, 128
-    cmp rax, rdi
-    jb .loop
+
+    mov rax, rsi 
+    add rax, r8
+
+    sub rdi, 0x100
+    jnz .loop
+
     ret
 

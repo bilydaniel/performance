@@ -410,15 +410,16 @@ pub noinline fn casheBandwidth(tester: *RepetitionTester.RepetitionTester, readP
         tester.beginTime();
         handleAlloc(readParams, &fileBuffer);
 
-        // 32k 200gb/s 64k 150gb/s
-        //const mask = 0b111111111111111; // this one is 200gb, another 1 and it goes down
-        //150gb/s
-        //const mask = 0b111111111111111111; // fits l1
-        //120gb/s
-        const mask = 0b11111111111111111111111; // fits l2
+        // L1 32k 200gb/s
+        //const mask = 0b111111111111111; // this one is 290, another 1 and it goes down
+        // L2 64k 150gb/s
+        //const mask = 0b1111111111111111;
+        // L3 130gb/s
+        //const mask = 0b11111111111111111111111;
 
-        //70gb/s
-        //const mask = 0b111111111111111111111111; // fits l3
+        //L3 degraded because its full 82gb/s,
+        const mask = 0b111111111111111111111111;
+
         //20gb/s
         //const mask = 0b1111111111111111111111111; // main memory
 
