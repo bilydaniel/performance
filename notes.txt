@@ -602,3 +602,34 @@ number of buffers dictates the bandwidth, the more buffers the more requests
 in flight we can have
 latency is dictated by the distance from the core
 latency and bandwidth are therefore unrelated
+
+when lookig up in a cashe we use some bits from the address to search for the correct row in the cashe, each row usually has 8 columns, we than go through all the columns and compare, if not found we evict the least recently used column, ask for the data and put them into that slot
+8 way associative cashe (8 columns)
+
+with linked list you are less likely to get a good cashing behaviour because:
+    - linked lists are bigger(each node has header), same size cashe stores more data in array
+    - prefetching - array is more predictible(linear or jumping by a constant), can be fixed by allocating elements next to each other, if an array element contains lets say 48 bytes of data, and we fetch 64 bytes, we also fetch part of the next element, this is usually not gonna happen in linked list
+    - linked list is a serial dependency
+    - if on each node you have alot of computations to do then all of this doesent matter
+
+todays memory architecture provides massive memory bandwidth, you usually arent memory bound, you have serial dependencies that prevent the memory loads
+
+load / store buffers
+
+inclusive / exclusive cashing
+request: buffer -> L1 -> L2 -> L3 -> main memory
+response: buffer <- L1 <- L2 <- L3 <- main memory
+
+unaligned addresses can slow down reads because you have to read extra cashe lines when for example just one byte is over in the next cashe line
+
+if loading 2 x 32Byte registers ymm0 + ymm1, and the memory is aligned, it fits into one cashe line, one read buffer, if its misaligned by just on byte you have to load two cashe lines into two buffers and then do assembling of the data, which is also expensive
+these alignment penalties dont matter if you do enough computations so it gets overlapped
+also, if you have your data packed, the next instruction will use the extra loaded data nayway
+
+dont pass over data several times try to do as much work in each pass as possible
+
+cashes index by separating the address into index bits and tag bits, index says the group of cashe lines, then we compare against the tag
+essentialy the L1 cashe is separated into 64 small cashes that are index by the index bits, and each contains 16 cashe lines that are index by the tag bits
+16 way associative cashe means exactly this, its 16 entries mini cashes
+the cashe stores the tag and some value to figure out the LRU
+bigger slower cashes then L1 are more complex so they have more logic

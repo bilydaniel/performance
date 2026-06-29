@@ -126,9 +126,24 @@ pub fn main() !void {
     const KB = 1024;
     const MB = KB * KB;
     const GB = MB * KB;
+
     fileSize = 1 * GB;
 
-    const destination = try std.heap.page_allocator.alloc(u8, fileSize);
+    const testingAlignment = true;
+    if (testingAlignment) {
+        fileSize = 2 * GB;
+    }
+
+    const allocatedBuffer = try std.heap.page_allocator.alloc(u8, fileSize);
+    var destination: []u8 = undefined;
+
+    if (testingAlignment) {
+        const offset = 1;
+        destination = allocatedBuffer[offset .. 1 * GB + offset];
+    } else {
+        destination = allocatedBuffer;
+    }
+
     //defer std.heap.page_allocator.free(destination);
     //const destination = try allocator.alloc(u8, fileSize);
 
