@@ -1,4 +1,10 @@
+Try out GPUs:
+    - https://www.youtube.com/watch?v=g8oeYnOLFM0&list=PLOz43BFq3KUHBSJpYlcP8gK0Z0SLmQlb_&index=1
+    - https://gist.github.com/notnotrobby/ceef71527b4f15869133ba7b397912e9
+
+
 Project idea to practice performance programming:
+
     - !! dwarf fortress + minecraft skyblock
     - kerbal space program clone?
     - have a look at 3D assets, might try to make a 3d game based on the assets
@@ -633,3 +639,22 @@ essentialy the L1 cashe is separated into 64 small cashes that are index by the 
 16 way associative cashe means exactly this, its 16 entries mini cashes
 the cashe stores the tag and some value to figure out the LRU
 bigger slower cashes then L1 are more complex so they have more logic
+
+for atomic operation cashe lines get tagged by exclusivity bit
+if you want paralel program to be performant you should not use any syncing primitives like locks, semaphores etc.
+
+because of the way cashe lines are indexed, first six bits tell us the cashe line, so the 7th bit to like 10th (depends), are used as index bits, if we stride addresses by 512 bytes, that means we essentially loose half of our cashe because 7th and 8th bit are always the same and so they are mapped into the same group
+
+non-temporal operations, temporal means time based
+cashes are temporal, they depend on timings (if we ask now, the data is there, later it wont be)
+used when we dont want to touch the cashe, for example when storing data we wont need for a long time
+movntdq - non temporal move, has to be a write, not a read
+movntdqa is a non temporal read, not used much
+forces evicting if it was already stored
+used alot for communicating with hardware where we dont want to have stale data in the cashe
+
+
+manual prefetch (prefetch instruction), prefetch [0/1/2] [address], 0,1,2 says how close
+does same thing as move, doesent put anything in a register, just puts things in cashe
+only usefull when data is not prefetched by hardware already and if there are no otheri nstructions we could be working on out of order
+not very useful
