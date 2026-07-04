@@ -13,6 +13,10 @@ Project idea to practice performance programming:
     - bullet hell arcade game, try to have alot of FPS, alot of enemies, bullets, effects, no idea if it would be enough tho
     - something like noita, where each pixel is simulated, probably something about a miner / mining, no idea where iam gonna get assets tho, draw them? potential assets: https://itch.io/s/145923/dark-series-bundle
 
+DWARF FORTRESS:
+    - missions / dungeons
+    - steps for crafting recipes
+
 Data oriented design:
     - noel llopis: "data oriented design" - blog
     - chandrel carruth: "efficiency with algorithms, performance with data structures" - yt
@@ -658,3 +662,16 @@ manual prefetch (prefetch instruction), prefetch [0/1/2] [address], 0,1,2 says h
 does same thing as move, doesent put anything in a register, just puts things in cashe
 only usefull when data is not prefetched by hardware already and if there are no otheri nstructions we could be working on out of order
 not very useful
+@prefetch in zig
+
+cashe lookup is done in virtual address so that the cashe lookup and the
+translation into physical address (TLB or 4-level paging if miss) are done at
+the same time in paralel
+because of this L1 cashe is usually 32K because it doesent have to touch any
+of the address that would need to be translated to physical first 2^6 says
+cashe line the next 2^6(2^12) says page, those addresses are the same for
+virtual or physical, so 2^12
+* 2^3(8 way assosiative) is 2^12 = 32K
+
+
+
