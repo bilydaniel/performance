@@ -33,10 +33,10 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     //TODO: test out arena allocator
 
-    const allocator = gpa.allocator();
+    var allocator = gpa.allocator();
     defer _ = gpa.deinit();
 
-    //TODO: init / deinit map in profiler
+    allocator = std.heap.page_allocator;
 
     Profiler.beginProfile();
     const time_block = Profiler.timeFunction(@src());
@@ -58,16 +58,44 @@ pub fn main() !void {
     const stat = try file.stat();
     const fileSize = stat.size;
 
-    std.debug.print("file_size: {}", .{fileSize});
+    std.debug.print("file_size: {}\n", .{fileSize});
 
-    const inputJSON = try allocator.alloc(u8, fileSize);
-    var buffer: [4096 * 4]u8 = undefined; // the bigger buffer the faster it seems to be
-    var reader = file.reader(&buffer);
+    var inputJSON = try allocator.alloc(u8, fileSize);
+
+    const prePageFault = false;
+    if (prePageFault) {
+        for (0..inputJSON.len) |i| {
+            inputJSON[i] = @truncate(i);
+        }
+    }
+
+    const useSimpleRead = false;
 
     const read_block = Profiler.timeBlockBandwith("read_bandwith", fileSize);
+    if (useSimpleRead) {
+        _ = try file.readAll(inputJSON);
+    } else {
+        // var buffer: [4096 * 4]u8 = undefined; // the bigger buffer the faster it seems to be
+        // var reader = file.reader(&buffer);
+        // try reader.interface.readSliceAll(inputJSON);
+
+        const mappedFile = try std.posix.mmap(
+            null,
+            fileSize,
+            std.posix.PROT.READ | std.posix.PROT.WRITE,
+            .{ .TYPE = .PRIVATE },
+            file.handle,
+            0,
+        );
+
+        inputJSON = mappedFile;
+        //defer std.posix.munmap(mappedFile);
+        // for (0..inputJSON.len) |i| {
+        //     x = inputJSON[i];
+        // }
+    }
 
     //const inputJSON = try reader.interface.readAlloc(allocator, fileSize);
-    try reader.interface.readSliceAll(inputJSON);
     //TODO: casey has allocation and reading split, he is measuring only the reading
     //so maybe split it too
 

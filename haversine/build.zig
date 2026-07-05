@@ -55,17 +55,28 @@ pub fn build(b: *std.Build) void {
     });
     pageFaults.linkLibC();
 
+    const fileRead = b.addExecutable(.{
+        .use_llvm = true,
+        .name = "file_read",
+        .root_module = b.createModule(.{
+            // Fixed: changed from src/generator.zig to src/haversine.zig
+            .root_source_file = b.path("src/file_read_main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{},
+            .strip = false,
+        }),
+    });
+
     b.installArtifact(generator);
     b.installArtifact(haversine);
     b.installArtifact(readOverhead);
     b.installArtifact(pageFaults);
+    b.installArtifact(fileRead);
 
     // GENERATOR RUN STEP
     const run_generator_step = b.step("run_generator", "Run the generator application");
     const run_generator_cmd = b.addRunArtifact(generator);
-
-    //run_generator_cmd.step.dependOn(b.getInstallStep());
-
     if (b.args) |args| {
         run_generator_cmd.addArgs(args);
     }
@@ -74,9 +85,6 @@ pub fn build(b: *std.Build) void {
     // HAVERSINE RUN STEP
     const run_haversine_step = b.step("run_haversine", "Run the haversine application");
     const run_haversine_cmd = b.addRunArtifact(haversine);
-
-    //run_haversine_cmd.step.dependOn(b.getInstallStep());
-
     if (b.args) |args| {
         run_haversine_cmd.addArgs(args);
     }
@@ -86,9 +94,6 @@ pub fn build(b: *std.Build) void {
     const install_read_overhead = b.addInstallArtifact(readOverhead, .{});
     const run_read_overhead_step = b.step("run_read_overhead", "");
     const run_read_overhead_cmd = b.addRunArtifact(readOverhead);
-
-    //run_read_overhead_cmd.step.dependOn(b.getInstallStep());
-
     run_read_overhead_cmd.step.dependOn(&install_read_overhead.step);
     if (b.args) |args| {
         run_read_overhead_cmd.addArgs(args);
@@ -98,11 +103,12 @@ pub fn build(b: *std.Build) void {
     // PAGE FAULTS RUN STEP
     const run_page_faults_step = b.step("run_page_faults", "");
     const run_page_faults_cmd = b.addRunArtifact(pageFaults);
-
-    //run_page_faults_cmd.step.dependOn(b.getInstallStep());
-
     if (b.args) |args| {
         run_page_faults_cmd.addArgs(args);
     }
     run_page_faults_step.dependOn(&run_page_faults_cmd.step);
+
+    const run_file_read_step = b.step("run_file_read", "");
+    const run_file_read_cmd = b.addRunArtifact(fileRead);
+    run_file_read_step.dependOn(&run_file_read_cmd.step);
 }
