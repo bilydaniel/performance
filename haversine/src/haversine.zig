@@ -75,20 +75,20 @@ pub fn main() !void {
     if (useSimpleRead) {
         _ = try file.readAll(inputJSON);
     } else {
-        // var buffer: [4096 * 4]u8 = undefined; // the bigger buffer the faster it seems to be
-        // var reader = file.reader(&buffer);
-        // try reader.interface.readSliceAll(inputJSON);
+        var buffer: [4096 * 4]u8 = undefined; // the bigger buffer the faster it seems to be
+        var reader = file.reader(&buffer);
+        try reader.interface.readSliceAll(inputJSON);
 
-        const mappedFile = try std.posix.mmap(
-            null,
-            fileSize,
-            std.posix.PROT.READ | std.posix.PROT.WRITE,
-            .{ .TYPE = .PRIVATE },
-            file.handle,
-            0,
-        );
-
-        inputJSON = mappedFile;
+        // const mappedFile = try std.posix.mmap(
+        //     null,
+        //     fileSize,
+        //     std.posix.PROT.READ | std.posix.PROT.WRITE,
+        //     .{ .TYPE = .PRIVATE },
+        //     file.handle,
+        //     0,
+        // );
+        //
+        // inputJSON = mappedFile;
         //defer std.posix.munmap(mappedFile);
         // for (0..inputJSON.len) |i| {
         //     x = inputJSON[i];
