@@ -679,3 +679,19 @@ we want to find a sweet spot of a buffer size, not too small so that we dont hav
 
 when reading a big file, the way to optimize it is to have two smaller buffer, read into one and calculate the other using two threads, almost at the speed of just the reads, the summing is almost perfectly overlapped therefore free
 
+start using zero values instead of errors everywhere
+
+when sending a struct to a function, if its not being modified just send it by value if its smaller than 4k, send by pointer only when you need modifications
+
+if you have many producers / consumers threads, its better to have 1:1, one
+producer talks with one consumer, dont tangle them together, add work stealing
+
+double buffering for 1 consumer 1 producer, or ring buffer
+
+if you use optional function pointer its better to have a function pointer
+that points to a function that doesent do anything thanto check if the funtion
+pointer is not zero because of double branch predicttion(on the if and on the
+function call), same idea as with errors, instead of having non-functional
+state, always have something that "works"
+or my idea is that you can just switch on a type and call a specific function
+based on that, also just one predictio? if the functions get inlined
