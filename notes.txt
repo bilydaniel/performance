@@ -695,3 +695,7 @@ function call), same idea as with errors, instead of having non-functional
 state, always have something that "works"
 or my idea is that you can just switch on a type and call a specific function
 based on that, also just one predictio? if the functions get inlined
+
+look at multithreading as a wholisting approach to your architecture not just multithreading one function,  casey doesent have any good resources, gonna have to try myself
+
+

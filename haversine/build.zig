@@ -68,11 +68,26 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const haversineTester = b.addExecutable(.{
+        .use_llvm = true,
+        .name = "haversine_tester",
+        .root_module = b.createModule(.{
+            // Fixed: changed from src/generator.zig to src/haversine.zig
+            .root_source_file = b.path("src/haversine_tester_main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{},
+            .strip = false,
+        }),
+    });
+    haversineTester.linkLibC();
+
     b.installArtifact(generator);
     b.installArtifact(haversine);
     b.installArtifact(readOverhead);
     b.installArtifact(pageFaults);
     b.installArtifact(fileRead);
+    b.installArtifact(haversineTester);
 
     // GENERATOR RUN STEP
     const run_generator_step = b.step("run_generator", "Run the generator application");
@@ -108,7 +123,13 @@ pub fn build(b: *std.Build) void {
     }
     run_page_faults_step.dependOn(&run_page_faults_cmd.step);
 
+    // FILE READ
     const run_file_read_step = b.step("run_file_read", "");
     const run_file_read_cmd = b.addRunArtifact(fileRead);
     run_file_read_step.dependOn(&run_file_read_cmd.step);
+
+    // HAVERSINE TESTER
+    const run_haversine_tester_step = b.step("run_haversine_tester", "");
+    const run_haversine_tester_cmd = b.addRunArtifact(haversineTester);
+    run_haversine_tester_step.dependOn(&run_haversine_tester_cmd.step);
 }

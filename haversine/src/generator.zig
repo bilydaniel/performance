@@ -61,7 +61,10 @@ pub fn main() !void {
     const arguments = try parseArgs(args);
 
     var file = try std.fs.cwd().createFile("pairs.json", .{});
+    var fileAnswers = try std.fs.cwd().createFile("answers.f64", .{});
+
     defer file.close();
+    defer fileAnswers.close();
 
     var buffer: [4096]u8 = undefined;
     var fileWriter = file.writer(&buffer);
@@ -96,13 +99,13 @@ pub fn main() !void {
 
         const haversine_value = haversine(point0.x, point0.y, point1.x, point1.y, EARTH_RADIUS);
         //TODO: @finish saving results of every pair into a binary file
+        try fileAnswers.writeAll(std.mem.asBytes(&haversine_value));
         haversine_sum += haversine_value;
 
         if (i == arguments.numberOfPairs - 1) {
-            //TODO: add .16 for 16 decimal places
-            try writer.print("\t\t{{\"x0\": {d},\"y0\":{d},\"x1\":{d},\"y1\":{d} }}\n", .{ point0.x, point0.y, point1.x, point1.y });
+            try writer.print("\t\t{{\"x0\": {d:.16},\"y0\":{d:.16},\"x1\":{d:.16},\"y1\":{d:.16} }}\n", .{ point0.x, point0.y, point1.x, point1.y });
         } else {
-            try writer.print("\t\t{{\"x0\": {d},\"y0\":{d},\"x1\":{d},\"y1\":{d} }},\n", .{ point0.x, point0.y, point1.x, point1.y });
+            try writer.print("\t\t{{\"x0\": {d:.16},\"y0\":{d:.16},\"x1\":{d:.16},\"y1\":{d:.16} }},\n", .{ point0.x, point0.y, point1.x, point1.y });
         }
 
         if (!arguments.uniform and @mod(i, arguments.clusterSize) == 0) {
@@ -112,10 +115,12 @@ pub fn main() !void {
             radiusy = randomInRange(0, 90);
         }
     }
+
     _ = try writer.write("]\n}");
     try writer.flush();
     const haversine_avg = haversine_sum / @as(f64, @floatFromInt(arguments.numberOfPairs));
     std.debug.print("{d}\n", .{haversine_avg});
+    try fileAnswers.writeAll(std.mem.asBytes(&haversine_avg));
 }
 
 fn parseArgs(args: [][:0]u8) !Arguments {
