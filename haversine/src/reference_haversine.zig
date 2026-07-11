@@ -36,6 +36,63 @@ pub fn approxEqual(x: f64, y: f64) bool {
     return result;
 }
 
+const Range = struct {
+    min: f64 = math.floatMax(f64),
+    max: f64 = math.floatMin(f64),
+};
+pub const RangeType = enum {
+    cos, // -1.56 => 1.56
+    sin, // -3 => 3
+    asin, // 0 => 1
+    sqrt, // 0 => 1
+};
+
+const rangeTypeLen = @typeInfo(RangeType).@"enum".fields.len;
+pub var ranges: [rangeTypeLen]Range = [_]Range{.{}} ** rangeTypeLen;
+
+pub fn checkRange(rangeType: RangeType, x: f64) void {
+    const typeIndex = @intFromEnum(rangeType);
+    const min = ranges[typeIndex].min;
+    const max = ranges[typeIndex].max;
+
+    if (x < min) {
+        ranges[typeIndex].min = x;
+    } else if (x > max) {
+        ranges[typeIndex].max = x;
+    }
+}
+
+pub fn square(x: f64) f64 {
+    return x * x;
+}
+
+pub fn cos(x: f64) f64 {
+    const input = x;
+    checkRange(.cos, x);
+
+    const output = math.cos(x);
+    std.debug.print("cos({}) = {}\n", .{ input, output });
+    return output;
+}
+
+pub fn sin(x: f64) f64 {
+    checkRange(.sin, x);
+
+    return math.sin(x);
+}
+
+pub fn asin(x: f64) f64 {
+    checkRange(.asin, x);
+
+    return math.asin(x);
+}
+
+pub fn sqrt(x: f64) f64 {
+    checkRange(.sqrt, x);
+
+    return math.sqrt(x);
+}
+
 pub fn referenceHaversine(x0: f64, y0: f64, x1: f64, y1: f64, radius: f64) f64 {
     //@setFloatMode(.optimized);
 
@@ -44,8 +101,19 @@ pub fn referenceHaversine(x0: f64, y0: f64, x1: f64, y1: f64, radius: f64) f64 {
     const y0_rad = dgrToRad(y0);
     const y1_rad = dgrToRad(y1);
 
-    const rootTerm = (math.pow(f64, math.sin(dy / 2), 2)) + math.cos(y0_rad) * math.cos(y1_rad) * (math.pow(f64, math.sin(dx / 2), 2));
-    const result = 2 * radius * math.asin(math.sqrt(rootTerm));
+    //const rootTerm = (math.pow(f64, math.sin(dy / 2), 2)) + math.cos(y0_rad) * math.cos(y1_rad) * (math.pow(f64, math.sin(dx / 2), 2));
+
+    const sin_dy_2 = sin(dy / 2.0);
+    const sin_dx_2 = sin(dx / 2.0);
+
+    const term_a = square(sin_dy_2);
+    const term_b = cos(y0_rad) * cos(y1_rad) * square(sin_dx_2);
+
+    const rootTerm = term_a + term_b;
+
+    const result = 2 * radius * asin(
+        sqrt(rootTerm),
+    );
     return result;
 }
 

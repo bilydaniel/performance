@@ -2,6 +2,18 @@ Try out GPUs:
     - https://www.youtube.com/watch?v=g8oeYnOLFM0&list=PLOz43BFq3KUHBSJpYlcP8gK0Z0SLmQlb_&index=1
     - https://gist.github.com/notnotrobby/ceef71527b4f15869133ba7b397912e9
 
+ginger bill:
+    - https://www.youtube.com/watch?v=B9kSV2TaKpw
+    - https://www.gingerbill.org/article/
+
+casey:
+    - https://caseymuratori.com/blog_0015
+
+j_blow:
+    - http://number-none.com/blow/blog/
+
+rfluery:
+    - https://www.dgtlgrove.com/
 
 Project idea to practice performance programming:
 
@@ -697,5 +709,8 @@ or my idea is that you can just switch on a type and call a specific function
 based on that, also just one predictio? if the functions get inlined
 
 look at multithreading as a wholisting approach to your architecture not just multithreading one function,  casey doesent have any good resources, gonna have to try myself
+
+not using early returns? having if near the actual code is more readable?
+control flow as simple as possible, dont use exception handling if possible
 
 

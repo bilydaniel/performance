@@ -59,5 +59,11 @@ pub fn main() !void {
         var stdout_file_writer = std.fs.File.stdout().writer(&.{});
         const stdout = &stdout_file_writer.interface;
         try series.printCSVForValue(.gb_per_second, stdout, 1.0);
+
+        for (std.enums.values(ReferenceHaversine.RangeType)) |rangeType| {
+            const value = ReferenceHaversine.ranges[@intFromEnum(rangeType)];
+            std.debug.print("{}: {any}\n", .{ rangeType, value });
+        }
+        std.debug.print("\n", .{});
     }
 }

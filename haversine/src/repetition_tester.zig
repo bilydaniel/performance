@@ -22,7 +22,7 @@ pub const ValueType = enum(usize) {
     count,
 };
 
-const valueTypeLen = @intFromEnum(ValueType.count);
+const valueTypeLen = @typeInfo(ValueType).@"enum".fields.len;
 
 pub const Value = struct {
     e: [valueTypeLen]u64 = [_]u64{0} ** valueTypeLen,
