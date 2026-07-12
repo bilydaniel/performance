@@ -713,4 +713,6 @@ look at multithreading as a wholisting approach to your architecture not just mu
 not using early returns? having if near the actual code is more readable?
 control flow as simple as possible, dont use exception handling if possible
 
+with the buffers for reading files, the cashe actually contains the write buffer(1 - 2 MB), and the L3 cashe is also trying to cashe the reads from the 1GB file, thas why the best performance buffer was quite small
 
+horners rule to minimize the number of steps(less computation = more performance + better precision because less rounding)
