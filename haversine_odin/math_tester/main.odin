@@ -70,7 +70,7 @@ sin_ce :: proc(x: f64) -> f64 {
 	return result
 }
 
-taylor_sin :: proc(x: f64, taylor_const: u32) -> f64 {
+taylor_sin :: proc(x: f64, max_power: u32) -> f64 {
 	result: f64 = 0
 	if x >= 0 && x <= math.PI / 2 {
 		result = approx_taylor_sin(x, taylor_const)
@@ -123,7 +123,7 @@ main :: proc() {
 	tester: Math_Tester
 
 	for precision_test(&tester, -PI64, PI64) {
-		for i: u32 = 1; i < 5; i += 1 {
+		for i: u32 = 1; i < 31; i += 2 {
 			test_result(
 				&tester,
 				sin_f64(tester.input_value),
