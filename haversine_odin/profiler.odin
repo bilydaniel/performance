@@ -4,14 +4,12 @@ import "core:fmt"
 
 PROFILER_ENABLED :: true // TODO: make it better for disabled profiler
 
-// One entry per profiled block/function. Add to this as you add time_block /
-// time_function call sites. .Unknown stays at index 0 and doubles as the
-// "no parent" root anchor (mirrors parent = 0 in the original Zig code).
 Anchor_ID :: enum {
-	Unknown,
-	// add your own here, e.g.:
-	// Parse_Buffer,
-	// Decode_Frame,
+	unknown,
+	main,
+	update,
+	draw,
+	sleep,
 }
 
 Profiler :: struct {
@@ -37,7 +35,7 @@ Block :: struct {
 }
 
 profiler: Profiler
-current_parent: Anchor_ID = .Unknown
+current_parent: Anchor_ID = .unknown
 
 // Derives the label from the call site for free (no lookup), but still needs
 // an explicit id so anchor indexing stays O(1) with no hashing.
@@ -146,11 +144,3 @@ print_time_elapsed :: proc(a: Anchor, total_elapsed: i64, cpu_freq: u64) {
 	}
 	fmt.printf("\n")
 }
-
-// Usage:
-//
-//   my_func :: proc() {
-//       b := time_function(.My_Func)   // add My_Func to Anchor_ID above
-//       defer block_end(b)
-//       ...
-//   }

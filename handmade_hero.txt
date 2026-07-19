@@ -1,1 +1,7 @@
-try different things, try your own style, techniques
+monkey_type: trying all 10 proper: 51 
+day1:
+    try different things, try your own style, techniques
+
+day2:
+
+

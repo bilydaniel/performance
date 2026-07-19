@@ -385,10 +385,6 @@ test_series_is_testing :: proc(ts: ^TestSeries, tester: ^Repetition_tester) -> b
 	return result
 }
 
-// NOTE: Zig's version uses `try writer.print(...)` to propagate I/O errors.
-// Odin's fmt.wprintf reports errors via its own return values rather than
-// through Zig-style error unions; here we simply ignore them, matching the
-// original's "best effort" console/CSV output style.
 test_series_print_csv_for_value :: proc(
 	ts: ^TestSeries,
 	value_type: ValueType,
@@ -398,7 +394,7 @@ test_series_print_csv_for_value :: proc(
 	fmt.wprintf(w, "%s", series_label_get(&ts.row_label_label))
 
 	for col_index in 0 ..< ts.column_count {
-		fmt.wprintf(w, ",%s", series_label_get(&ts.column_labels[col_index]))
+		fmt.wprintf(w, "%s", series_label_get(&ts.column_labels[col_index]))
 	}
 	fmt.wprintf(w, "\n")
 

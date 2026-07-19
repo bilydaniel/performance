@@ -8,6 +8,18 @@ ginger bill:
 
 casey:
     - https://caseymuratori.com/blog_0015
+    - write everything straight up first
+    - try to use more scopes
+    - semantic compression
+    - figure out what the procesor needs to do to get somehting done => figure out the most efficient way to express that in the language
+    - be like a dictionary compressor, always looking for a way to compress the code semantically
+    - dont reuse anything until you have at least two instances of it occurring
+    - make the code usable before making it reusable, dont look into the future, you are gonna be wrong
+    - just type out exactly what you want in each specific case and then when you find yourself doing something twice, pull out the reusable portion and share it, compressing the code
+    - when reusing a function it either fits perfectly, or you can make an abstraction on top of it(call the function from a different function with some configuration or wahtever) or you can split the function apart
+    - use shared stack frames (structs of variables that i can send together)
+    - this is how you let objects / structs / the code structure arise, you dont make anything upfront
+    - dont code "object oriented", code should be procedurally oriented and objects should just be constructs that allow the procesures to be reused
 
 j_blow:
     - http://number-none.com/blow/blog/
@@ -716,3 +728,36 @@ control flow as simple as possible, dont use exception handling if possible
 with the buffers for reading files, the cashe actually contains the write buffer(1 - 2 MB), and the L3 cashe is also trying to cashe the reads from the 1GB file, thas why the best performance buffer was quite small
 
 horners rule to minimize the number of steps(less computation = more performance + better precision because less rounding)
+
+
+optimize for the worst case scenario
+
+removing waste => waste naturally accumulates as you write code(for example x^2 is computed several times in the haversine functions, sending data into function as percentage then converting it to 0..1 value etc.)
+
+separate function into two functions, use assertions to show what you assume about the incoming values
+
+when ready and we know exactly what we need(our haversine function), we make a very bespoke precise version where we eliminate all the waster(like the x^2 computed several times in out case)
+
+be careful of constants(code simplified to a const if the input is known at comp time)
+and dead code elimination
+
+dont think how do i translate the scaler code into vector, think how do i write an algorithm thats naturally vector(dont be afraid to make bigger changes and smarter solutions) (store things more than once)
+
+bpu = branch prediction unit
+
+write code thats proper from the outset(no bugs, no edge cases)
+
+projects to do from casey: 
+    - software renderer 3d math, multithreading simd, raytracer
+    - compiler
+    - relational database
+    - http server(small) https - huge - wireguard
+    - classic game like asteroids from scratch
+
+dont use program stack if you can, dont use recursion
+
+multithreaded profiling - main thread just writes to several buffers, second thread just reads from them, does a checksum if the result is correct and wasnt read in the middle of a write, no asking if someone can do something  (locks)
+lockless programming still uses locks but on the cpu level (exclusive bit)
+
+for a port to execute something it needs to be available and the operations dependencies need to be satisfied, until then the uop waits in a scheduling queue
+

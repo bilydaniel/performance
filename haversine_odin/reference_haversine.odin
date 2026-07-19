@@ -6,10 +6,10 @@ import "core:log"
 import "core:math"
 import "core:mem"
 import "core:os"
-import "core:simd/x86"
 
 
 EARTH_RADIUS :: 6372.8 // KM
+PI64 :: 3.14159265358979323846264338327950288419716939937510582097494459230781640628
 
 Compute_Func :: proc(setup: Haversine_Setup) -> f64
 Verify_Func :: proc(setup: Haversine_Setup) -> u64
@@ -28,236 +28,148 @@ haversine_setup_is_valid :: proc(s: ^Haversine_Setup) -> bool {
 	return s.valid
 }
 
-dgr_to_rad :: proc(dgr: f64) -> f64 {
-	return dgr * (math.PI / 180.0)
-}
-
 approx_equal :: proc(x, y: f64) -> bool {
 	EPSILON :: 0.00000001
 	diff := x - y
 	return diff > -EPSILON && diff < EPSILON
 }
 
-Range :: struct {
-	min: f64,
-	max: f64,
-}
-
-Math_func_type :: enum {
-	Cos, // -1.56 => 1.56
-	Sin, // -3 => 3
-	Asin, // 0 => 1
-	Sqrt, // 0 => 1
-}
-
-ranges: [Math_func_type]Range = {
-	.Cos = {min = math.F64_MAX, max = math.F64_MIN},
-	.Sin = {min = math.F64_MAX, max = math.F64_MIN},
-	.Asin = {min = math.F64_MAX, max = math.F64_MIN},
-	.Sqrt = {min = math.F64_MAX, max = math.F64_MIN},
-}
-
-check_range :: proc(range_type: Math_func_type, x: f64) {
-	if testInputRange {
-		min := ranges[range_type].min
-		max := ranges[range_type].max
-
-		if x < min {
-			ranges[range_type].min = x
-		}
-
-		if x > max {
-			ranges[range_type].max = x
-		}
-	}
-}
-
-check_results :: proc(math_type: Math_func_type, input: f64) -> f64 {
-	math_function := math_functions[math_type]
-	test_output := math_function.test_function(input)
-	if testReferenceFunctions {
-		reference_output := math_function.reference_function(input)
-
-		diff := abs(test_output - reference_output)
-		math_result := &math_results[math_type]
-		if diff > math_result.diff {
-			math_result.input = input
-			math_result.test_output = test_output
-			math_result.reference_output = reference_output
-			math_result.diff = diff
-		}
-	}
-	return test_output
-}
-
-Math_test_result :: struct {
-	input:            f64,
-	test_output:      f64,
-	reference_output: f64,
-	diff:             f64,
-}
-
-Math_functions :: struct {
-	test_function:      proc(x: f64) -> f64,
-	reference_function: proc(x: f64) -> f64,
-}
-
-testReferenceFunctions :: true
-testInputRange :: true
-math_results: [len(Math_func_type)]Math_test_result
-math_functions: [len(Math_func_type)]Math_functions
-
-init_math_functions :: proc() {
-	math_functions[Math_func_type.Cos].reference_function = reference_cos
-	math_functions[Math_func_type.Cos].test_function = test_cos
-
-	math_functions[Math_func_type.Sin].reference_function = reference_sin
-	math_functions[Math_func_type.Sin].test_function = test_sin
-
-	math_functions[Math_func_type.Asin].reference_function = reference_asin
-	math_functions[Math_func_type.Asin].test_function = test_asin
-
-	math_functions[Math_func_type.Sqrt].reference_function = reference_sqrt
-	math_functions[Math_func_type.Sqrt].test_function = test_sqrt
-}
-
 square :: proc(x: f64) -> f64 {
 	return x * x
 }
 
-test_cos :: proc(x: f64) -> f64 {
-	x_abs := abs(x)
+fma :: intrinsics.fused_mul_add
 
-	result: f64 = 0
-	if x_abs >= 0 && x_abs <= math.PI / 2 {
-		result = approx_sin(math.PI / 2 - x_abs)
-	} else if x_abs > math.PI / 2 && x_abs <= math.PI {
-		x_shifted := math.PI - x_abs
-		result = -approx_sin(math.PI / 2 - x_shifted)
-	}
+sin_ce :: proc(orig_x: f64) -> f64 {
+	half_pi := PI64 / 2
+	pos_x := abs(orig_x)
+	x := pos_x > half_pi ? (PI64 - pos_x) : pos_x
 
-	return result
-}
+	x2 := x * x
 
-reference_cos :: proc(x: f64) -> f64 {
-	return math.cos(x)
-}
+	r: f64 = 0h3CE883C1C5DEFFBE
+	r = fma(r, x2, 0hBD6AE43DC9BF8BA7)
+	r = fma(r, x2, 0h3DE6123CE513B09F)
+	r = fma(r, x2, 0hBE5AE6454D960AC4)
+	r = fma(r, x2, 0h3EC71DE3A52AAB96)
+	r = fma(r, x2, 0hBF2A01A01A014EB6)
+	r = fma(r, x2, 0h3F811111111110C9)
+	r = fma(r, x2, 0hBFC5555555555555)
+	r = fma(r, x2, 0h3FF0000000000000)
+	r *= x
 
-cos :: proc(x: f64) -> f64 {
-	check_range(.Cos, x)
-	test_output := check_results(.Cos, x)
-	return test_output
-}
-
-reference_sin :: proc(x: f64) -> f64 {
-	return math.sin(x)
-}
-
-//approximates 0 -> pi, acting like its only 0 -> pi/2 for practice
-approx_sin :: proc(x: f64) -> f64 {
-	assert(x >= 0 && x <= math.PI / 2, "x is shit")
-	a := (-4 / (math.PI * math.PI))
-	b := (4 / math.PI)
-
-	result := a * (x * x) + (b * x)
-	return result
-}
-
-test_sin :: proc(x: f64) -> f64 {
-	result: f64 = 0
-	if x >= 0 && x <= math.PI / 2 {
-		result = approx_sin(x)
-	} else if x > math.PI / 2 && x <= math.PI {
-		x_shifted := math.PI - x
-		result = approx_sin(x_shifted)
-	} else if x < 0 && x >= -math.PI / 2 {
-		x_abs := -x
-		result = -approx_sin(x_abs)
-	} else if x < -math.PI / 2 && x >= -math.PI {
-		x_shifted := x + math.PI
-		result = -approx_sin(x_shifted)
-	}
-	return result
-}
-
-sin :: proc(x: f64) -> f64 {
-	check_range(.Sin, x)
-	test_output := check_results(.Sin, x)
-	return test_output
-}
-
-reference_asin :: proc(x: f64) -> f64 {
-	return math.asin(x)
-}
-
-test_asin :: proc(x: f64) -> f64 {
-	return math.asin(x)
-}
-
-asin :: proc(x: f64) -> f64 {
-	check_range(.Asin, x)
-	test_output := check_results(.Asin, x)
-	return test_output
-}
-
-sqrt :: proc(x: f64) -> f64 {
-	check_range(.Sqrt, x)
-	test_output := check_results(.Sqrt, x)
-	return test_output
-}
-reference_sqrt :: proc(x: f64) -> f64 {
-	return math.sqrt(x)
-}
-
-test_sqrt :: proc(x: f64) -> f64 {
-	// could cast to f32 for faster calculation with less precision
-	a: #simd[1]f64 = x
-	int_result := intrinsics.sqrt(a)
-	result := intrinsics.simd_extract(int_result, 0)
-
+	result := orig_x < 0 ? -r : r
 
 	return result
 }
 
-reference_haversine :: proc(x0, y0, x1, y1, radius: f64) -> f64 {
-	dy := dgr_to_rad(y1 - y0)
-	dx := dgr_to_rad(x1 - x0)
-	y0_rad := dgr_to_rad(y0)
-	y1_rad := dgr_to_rad(y1)
 
-	sin_dy_2 := sin(dy / 2.0)
-	sin_dx_2 := sin(dx / 2.0)
-
-	term_a := square(sin_dy_2)
-	term_b := cos(y0_rad) * cos(y1_rad) * square(sin_dx_2)
-
-	root_term := term_a + term_b
-
-	result := 2 * radius * asin(sqrt(root_term))
+cos_ce :: proc(x: f64) -> f64 {
+	result := sin_ce(x + PI64 / 2.0)
 	return result
 }
 
-reference_haversine_sum :: proc(setup: Haversine_Setup) -> f64 {
+sqrt_ce :: proc(scalar_x: f64) -> f64 {
+	result := math.sqrt(scalar_x)
+	return result
+}
+
+asin_core_from_squared :: proc(x2: f64) -> f64 {
+
+	x := sqrt_ce(x2)
+
+	r: f64 = 0h3FEDFC53682725CA
+	r = fma(r, x2, 0hC00BEC6DAF74ED61)
+	r = fma(r, x2, 0h4018BF4DADAF548C)
+	r = fma(r, x2, 0hC01B06F523E74F33)
+	r = fma(r, x2, 0h4014537DDDE2D76D)
+	r = fma(r, x2, 0hC006067D334B4792)
+	r = fma(r, x2, 0h3FF1FB54DA575B22)
+	r = fma(r, x2, 0hBFD57380BCD2890E)
+	r = fma(r, x2, 0h3FB69B370AAD086E)
+	r = fma(r, x2, 0hBF721438CCC95D62)
+	r = fma(r, x2, 0h3F8B8A33B8E380EF)
+	r = fma(r, x2, 0h3F8C37061F4E5F55)
+	r = fma(r, x2, 0h3F91C875D6C5323D)
+	r = fma(r, x2, 0h3F96E88CE94D1149)
+	r = fma(r, x2, 0h3F9F1C73443A02F5)
+	r = fma(r, x2, 0h3FA6DB6DB3184756)
+	r = fma(r, x2, 0h3FB3333333380DF2)
+	r = fma(r, x2, 0h3FC555555555531E)
+	r = fma(r, x2, 0h3FF0000000000000)
+	r *= x
+
+	return r
+}
+
+asin_ce :: proc(orig_x: f64) -> f64 {
+	needs_transform := orig_x > 0.7071067811865475244
+	x := needs_transform ? sqrt_ce(1.0 - orig_x * orig_x) : orig_x
+
+	x2 := x * x
+
+	r: f64 = 0h3FEDFC53682725CA
+	r = fma(r, x2, 0hC00BEC6DAF74ED61)
+	r = fma(r, x2, 0h4018BF4DADAF548C)
+	r = fma(r, x2, 0hC01B06F523E74F33)
+	r = fma(r, x2, 0h4014537DDDE2D76D)
+	r = fma(r, x2, 0hC006067D334B4792)
+	r = fma(r, x2, 0h3FF1FB54DA575B22)
+	r = fma(r, x2, 0hBFD57380BCD2890E)
+	r = fma(r, x2, 0h3FB69B370AAD086E)
+	r = fma(r, x2, 0hBF721438CCC95D62)
+	r = fma(r, x2, 0h3F8B8A33B8E380EF)
+	r = fma(r, x2, 0h3F8C37061F4E5F55)
+	r = fma(r, x2, 0h3F91C875D6C5323D)
+	r = fma(r, x2, 0h3F96E88CE94D1149)
+	r = fma(r, x2, 0h3F9F1C73443A02F5)
+	r = fma(r, x2, 0h3FA6DB6DB3184756)
+	r = fma(r, x2, 0h3FB3333333380DF2)
+	r = fma(r, x2, 0h3FC555555555531E)
+	r = fma(r, x2, 0h3FF0000000000000)
+	r *= x
+
+	result := needs_transform ? (1.57079632679489661923 - r) : r
+	return result
+}
+
+expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 	sum: f64 = 0
-	sum_coeff := 1.0 / f64(len(setup.parsed_pairs))
+	sum_coeff := (2 * EARTH_RADIUS) / f64(len(setup.parsed_pairs))
 
 	for pair in setup.parsed_pairs {
-		dist := reference_haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS)
-		sum += sum_coeff * dist
+		x0 := pair.x0
+		x1 := pair.x1
+		y0 := pair.y0
+		y1 := pair.y1
+
+
+		radian_c := 0.01745329251994329577 // pi / 180
+		radian_c_half := radian_c / 2
+		pi_half := PI64 / 2
+
+		dx := (x1 - x0) * radian_c_half // dgr to rad + / 2
+		dy := (y1 - y0) * radian_c_half // always gets divided by 2, so just use half od radian_c
+		y0_rad := fma(y0, radian_c, pi_half) // always gets + pi_half
+		y1_rad := fma(y1, radian_c, pi_half)
+
+		s0: f64 = sin_ce(dy)
+		s1: f64 = sin_ce(y0_rad) // cos, pi_half in fma
+		s2: f64 = sin_ce(y1_rad) // cos
+		s3 := sin_ce(dx)
+
+		a: f64 = fma(s0, s0, s1 * s2 * s3 * s3)
+
+
+		// ASIN
+		needs_transform := a > 0.5
+		range_a := needs_transform ? (1.0 - a) : a
+		r: f64 = asin_core_from_squared(range_a)
+		range_r := needs_transform ? (1.57079632679489661923 - r) : r
+
+		sum = fma(range_r, sum_coeff, sum)
 	}
 	return sum
-}
-
-reference_verify_haversine :: proc(setup: Haversine_Setup) -> u64 {
-	error_count: u64 = 0
-
-	for pair, i in setup.parsed_pairs {
-		dist := reference_haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS)
-		if !approx_equal(dist, setup.answers[i]) {
-			error_count += 1
-		}
-	}
-	return error_count
 }
 
 read_entire_file :: proc(name: string) -> ([]u8, os.Error) {
