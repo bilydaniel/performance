@@ -64,21 +64,41 @@ dependency_chain_test :: proc() {
 	series, error := test_series_init(1, 1024)
 	if error == nil {
 		test_series_set_row_label_label(&series, "ChainLength")
+
+		// for chain_length: u64 = 8; chain_length <= 256; chain_length += 8 {
+		// 	rep_count: u64 = 1024 * 1024
+		// 	chaint_count := rep_count / chain_length
+		//
+		// 	rep_count = chaint_count * chain_length
+		// 	test_series_set_row_label(&series, "%v", chain_length)
+		// 	test_series_set_column_label(&series, "FMADepChain")
+		//
+		// 	tester := Repetition_tester{}
+		// 	test_series_new_test_wave(&series, &tester, .op_count, rep_count, cpu_freq, 10)
+		//
+		// 	for test_series_is_testing(&series, &tester) {
+		// 		repetition_tester_begin_time(&tester)
+		// 		fma_dep_chain(chaint_count, chain_length)
+		// 		repetition_tester_count_ops(&tester, rep_count)
+		// 		repetition_tester_end_time(&tester)
+		// 	}
+		// }
+
 		for chain_length: u64 = 8; chain_length <= 256; chain_length += 8 {
 			rep_count: u64 = 1024 * 1024
 			chaint_count := rep_count / chain_length
 
 			rep_count = chaint_count * chain_length
 			test_series_set_row_label(&series, "%v", chain_length)
-			test_series_set_column_label(&series, "FMADepChain")
+			test_series_set_column_label(&series, "FMADepChainInterleaved")
 
 			tester := Repetition_tester{}
-			test_series_new_test_wave(&series, &tester, rep_count, cpu_freq, 10)
+			test_series_new_test_wave(&series, &tester, .op_count, rep_count, cpu_freq, 10)
 
 			for test_series_is_testing(&series, &tester) {
 				repetition_tester_begin_time(&tester)
-				fma_dep_chain(chaint_count, chain_length)
-				repetition_tester_count_bytes(&tester, rep_count)
+				fma_dep_chain_interleaved(chaint_count, chain_length)
+				repetition_tester_count_ops(&tester, rep_count)
 				repetition_tester_end_time(&tester)
 			}
 		}
@@ -113,7 +133,14 @@ reference_haversine_test :: proc() {
 		test_series_set_column_label(&series, fmt.tprintf("%s", test_func.name))
 
 		tester: Repetition_tester
-		test_series_new_test_wave(&series, &tester, setup.parsed_byte_count, cpu_freq, 1) //10
+		test_series_new_test_wave(
+			&series,
+			&tester,
+			.Byte_Count,
+			setup.parsed_byte_count,
+			cpu_freq,
+			1,
+		) //10
 
 		sum_error_count: u64 = 0
 		test_sum: f64 = 0

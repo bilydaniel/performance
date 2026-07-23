@@ -3,5 +3,12 @@ day1:
     try different things, try your own style, techniques
 
 day2:
+    dont free when not necesery, you are just slowing down the closing of the application 
+day3:
+    when something fails, just have it empty and try again 
+day4:
+    use debugger, always, alot
+    use global variables temorarily to workour what needs to be where
+    
 
 

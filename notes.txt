@@ -761,3 +761,13 @@ lockless programming still uses locks but on the cpu level (exclusive bit)
 
 for a port to execute something it needs to be available and the operations dependencies need to be satisfied, until then the uop waits in a scheduling queue
 
+subdivide things that you know and dont know, after you know the divided thing you can merge it
+
+for variable sized things, use a number of fixed sized ones and you can use free lists on the fixed sized chunks
+
+use pen and paper alot, visualizations and debuggers
+
+when sending a struct by value or reference, just look at the assembly
+only when the thing is big (more than 16B), and called alot of times, in optimized builds it usually gets inined anyway
+
+interleaaving puts alot of preassure on registers

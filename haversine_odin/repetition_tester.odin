@@ -1,13 +1,10 @@
 package haversine
 
-// NOTE: this assumes a sibling "profiling" package exposing:
-//   read_cpu_timer          :: proc() -> u64
-//   read_os_page_fault_count :: proc() -> u64
-// mirroring the Zig `profiling.zig` module's readCPUTimer / readOSPageFaultCount.
-
 import "core:fmt"
 import "core:io"
 import "core:mem"
+
+//TODO: fix this file, llm garbage
 
 TestMode :: enum u32 {
 	Uninitialized,
@@ -21,31 +18,26 @@ ValueType :: enum uint {
 	Cpu_Time,
 	Mem_Page_Faults,
 	Byte_Count,
+	op_count,
 	Seconds,
 	Gb_Per_Second,
 	Kb_Per_Page_Fault,
-	Count,
+	g_op_per_second,
 }
 
-// Matches the Zig `@typeInfo(ValueType).@"enum".fields.len`: one slot per
-// variant, including Count itself as a reserved/unused trailing slot.
-VALUE_TYPE_LEN :: int(ValueType.Count) + 1
+VALUE_TYPE_LEN :: len(ValueType)
 
 Value :: struct {
 	e:         [VALUE_TYPE_LEN]u64,
 	per_count: [VALUE_TYPE_LEN]f64,
 }
 
-value_init :: proc() -> Value {
-	return Value{}
-}
-
 value_get :: proc(v: ^Value, v_type: ValueType) -> u64 {
 	return v.e[int(v_type)]
 }
 
-value_compute_derived_values :: proc(v: ^Value, cpu_freq: u64) {
-	test_count := v.e[int(ValueType.Test_Count)]
+compute_derived_values :: proc(v: ^Value, cpu_freq: u64) {
+	test_count := value_get(v, .Test_Count)
 	divisor: f64 = f64(test_count) if test_count > 0 else 1.0
 
 	for i in 0 ..< VALUE_TYPE_LEN {
@@ -56,11 +48,13 @@ value_compute_derived_values :: proc(v: ^Value, cpu_freq: u64) {
 		seconds := seconds_from_cpu_time(v.per_count[int(ValueType.Cpu_Time)], cpu_freq)
 		v.per_count[int(ValueType.Seconds)] = seconds
 
-		if v.per_count[int(ValueType.Byte_Count)] > 0.0 {
-			gigabyte: f64 = 1024.0 * 1024.0 * 1024.0
-			v.per_count[int(ValueType.Gb_Per_Second)] =
-				v.per_count[int(ValueType.Byte_Count)] / (gigabyte * seconds)
-		}
+		gigabyte: f64 = 1024.0 * 1024.0 * 1024.0
+		giga: f64 = 1000 * 1000 * 1000
+		v.per_count[int(ValueType.Gb_Per_Second)] =
+			v.per_count[int(ValueType.Byte_Count)] / (gigabyte * seconds)
+
+		v.per_count[int(ValueType.g_op_per_second)] =
+			v.per_count[int(ValueType.op_count)] / (giga * seconds)
 	}
 
 	if v.per_count[int(ValueType.Mem_Page_Faults)] > 0.0 {
@@ -73,6 +67,7 @@ value_compute_derived_values :: proc(v: ^Value, cpu_freq: u64) {
 value_print :: proc(v: ^Value, label: string) {
 	fmt.printf("%s: %.0f", label, v.per_count[int(ValueType.Cpu_Time)])
 	fmt.printf(" (%.4fms)", 1000.0 * v.per_count[int(ValueType.Seconds)])
+	fmt.printf(" %fGOp/s", v.per_count[ValueType.g_op_per_second])
 
 	if v.per_count[int(ValueType.Byte_Count)] > 0.0 {
 		fmt.printf(" %.4fgb/s", v.per_count[int(ValueType.Gb_Per_Second)])
@@ -103,16 +98,17 @@ test_results_print :: proc(tr: ^TestResults) {
 }
 
 Repetition_tester :: struct {
-	target_processed_byte_count: u64,
-	cpu_freq:                    u64,
-	try_for_time:                u64,
-	tests_started_at:            u64,
-	test_mode:                   TestMode,
-	print_new_minimums:          bool,
-	open_block_count:            u32,
-	closed_block_count:          u32,
-	this_test:                   Value,
-	results:                     TestResults,
+	target_value:       u64,
+	target_value_type:  ValueType,
+	cpu_freq:           u64,
+	try_for_time:       u64,
+	tests_started_at:   u64,
+	test_mode:          TestMode,
+	print_new_minimums: bool,
+	open_block_count:   u32,
+	closed_block_count: u32,
+	this_test:          Value,
+	results:            TestResults,
 }
 
 repetition_tester_error_mode :: proc(rt: ^Repetition_tester, message: string) {
@@ -122,21 +118,27 @@ repetition_tester_error_mode :: proc(rt: ^Repetition_tester, message: string) {
 
 repetition_tester_new_test_wave :: proc(
 	rt: ^Repetition_tester,
-	target_processed_byte_count: u64,
+	target_value_type: ValueType,
+	target_value: u64,
 	cpu_freq: u64,
 	seconds_to_try: u32,
 ) {
 	if rt.test_mode == .Uninitialized {
 		rt.test_mode = .Testing
-		rt.target_processed_byte_count = target_processed_byte_count
+		rt.target_value_type = target_value_type
+		rt.target_value = target_value
 		rt.cpu_freq = cpu_freq
 		rt.print_new_minimums = true
 		rt.results.min.e[int(ValueType.Cpu_Time)] = max(u64)
 	} else if rt.test_mode == .Completed {
 		rt.test_mode = .Testing
 
-		if rt.target_processed_byte_count != target_processed_byte_count {
-			repetition_tester_error_mode(rt, "TargetProcessedByteCount changed")
+		if rt.target_value_type != target_value_type {
+			repetition_tester_error_mode(rt, "target_value_type changed")
+		}
+
+		if rt.target_value != target_value {
+			repetition_tester_error_mode(rt, "target_value changed")
 		}
 
 		if rt.cpu_freq != cpu_freq {
@@ -164,6 +166,10 @@ repetition_tester_count_bytes :: proc(rt: ^Repetition_tester, byte_count: u64) {
 	rt.this_test.e[int(ValueType.Byte_Count)] += byte_count
 }
 
+repetition_tester_count_ops :: proc(rt: ^Repetition_tester, op_count: u64) {
+	rt.this_test.e[ValueType.op_count] += op_count
+}
+
 repetition_tester_is_testing :: proc(rt: ^Repetition_tester) -> bool {
 	if rt.test_mode == .Testing {
 		accumulator := rt.this_test
@@ -174,8 +180,8 @@ repetition_tester_is_testing :: proc(rt: ^Repetition_tester) -> bool {
 				repetition_tester_error_mode(rt, "Unbalanced beginTime/endTime")
 			}
 
-			if accumulator.e[int(ValueType.Byte_Count)] != rt.target_processed_byte_count {
-				repetition_tester_error_mode(rt, "Processed byte count mismatch")
+			if accumulator.e[rt.target_value_type] != rt.target_value {
+				repetition_tester_error_mode(rt, "target_value mismatch")
 			}
 
 			if rt.test_mode == .Testing {
@@ -196,7 +202,7 @@ repetition_tester_is_testing :: proc(rt: ^Repetition_tester) -> bool {
 					rt.tests_started_at = curr_time
 
 					if rt.print_new_minimums {
-						value_compute_derived_values(&rt.results.min, rt.cpu_freq)
+						compute_derived_values(&rt.results.min, rt.cpu_freq)
 						value_print(&rt.results.min, "Min")
 						fmt.printf("                                   \r")
 					}
@@ -211,9 +217,9 @@ repetition_tester_is_testing :: proc(rt: ^Repetition_tester) -> bool {
 		if (curr_time - rt.tests_started_at) > rt.try_for_time {
 			rt.test_mode = .Completed
 
-			value_compute_derived_values(&rt.results.total, rt.cpu_freq)
-			value_compute_derived_values(&rt.results.min, rt.cpu_freq)
-			value_compute_derived_values(&rt.results.max, rt.cpu_freq)
+			compute_derived_values(&rt.results.total, rt.cpu_freq)
+			compute_derived_values(&rt.results.min, rt.cpu_freq)
+			compute_derived_values(&rt.results.max, rt.cpu_freq)
 
 			fmt.printf("                                                          \r")
 			test_results_print(&rt.results)
@@ -340,9 +346,10 @@ test_series_set_column_label :: proc(ts: ^TestSeries, format: string, args: ..an
 test_series_new_test_wave :: proc(
 	ts: ^TestSeries,
 	tester: ^Repetition_tester,
-	target_processed_byte_count: u64,
+	target_value_type: ValueType,
+	target_value: u64,
 	cpu_freq: u64,
-	seconds_to_try: u32,
+	seconds_to_try: u32 = 10,
 ) {
 	if test_series_is_in_bounds(ts) {
 		fmt.printf(
@@ -351,7 +358,13 @@ test_series_new_test_wave :: proc(
 			series_label_get(&ts.row_labels[ts.row_index]),
 		)
 	}
-	repetition_tester_new_test_wave(tester, target_processed_byte_count, cpu_freq, seconds_to_try)
+	repetition_tester_new_test_wave(
+		tester,
+		target_value_type,
+		target_value,
+		cpu_freq,
+		seconds_to_try,
+	)
 }
 
 test_series_get_test_results :: proc(
