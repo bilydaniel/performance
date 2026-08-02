@@ -61,45 +61,74 @@ main :: proc() {
 dependency_chain_test :: proc() {
 	cpu_freq := estimate_cpu_timer_freq()
 
+	test_dependency := false
+	test_interleaved := false
+	test_spaced := true
+
 	series, error := test_series_init(1, 1024)
 	if error == nil {
 		test_series_set_row_label_label(&series, "ChainLength")
 
-		// for chain_length: u64 = 8; chain_length <= 256; chain_length += 8 {
-		// 	rep_count: u64 = 1024 * 1024
-		// 	chaint_count := rep_count / chain_length
-		//
-		// 	rep_count = chaint_count * chain_length
-		// 	test_series_set_row_label(&series, "%v", chain_length)
-		// 	test_series_set_column_label(&series, "FMADepChain")
-		//
-		// 	tester := Repetition_tester{}
-		// 	test_series_new_test_wave(&series, &tester, .op_count, rep_count, cpu_freq, 10)
-		//
-		// 	for test_series_is_testing(&series, &tester) {
-		// 		repetition_tester_begin_time(&tester)
-		// 		fma_dep_chain(chaint_count, chain_length)
-		// 		repetition_tester_count_ops(&tester, rep_count)
-		// 		repetition_tester_end_time(&tester)
-		// 	}
-		// }
+		if test_dependency {
+			for chain_length: u64 = 8; chain_length <= 256; chain_length += 8 {
+				rep_count: u64 = 1024 * 1024
+				chaint_count := rep_count / chain_length
 
-		for chain_length: u64 = 8; chain_length <= 256; chain_length += 8 {
-			rep_count: u64 = 1024 * 1024
-			chaint_count := rep_count / chain_length
+				rep_count = chaint_count * chain_length
+				test_series_set_row_label(&series, "%v", chain_length)
+				test_series_set_column_label(&series, "FMADepChain")
 
-			rep_count = chaint_count * chain_length
-			test_series_set_row_label(&series, "%v", chain_length)
-			test_series_set_column_label(&series, "FMADepChainInterleaved")
+				tester := Repetition_tester{}
+				test_series_new_test_wave(&series, &tester, .op_count, rep_count, cpu_freq, 10)
 
-			tester := Repetition_tester{}
-			test_series_new_test_wave(&series, &tester, .op_count, rep_count, cpu_freq, 10)
+				for test_series_is_testing(&series, &tester) {
+					repetition_tester_begin_time(&tester)
+					fma_dep_chain(chaint_count, chain_length)
+					repetition_tester_count_ops(&tester, rep_count)
+					repetition_tester_end_time(&tester)
+				}
+			}
+		}
 
-			for test_series_is_testing(&series, &tester) {
-				repetition_tester_begin_time(&tester)
-				fma_dep_chain_interleaved(chaint_count, chain_length)
-				repetition_tester_count_ops(&tester, rep_count)
-				repetition_tester_end_time(&tester)
+		if test_interleaved {
+			for chain_length: u64 = 8; chain_length <= 256; chain_length += 8 {
+				rep_count: u64 = 1024 * 1024
+				chaint_count := rep_count / chain_length
+
+				rep_count = chaint_count * chain_length
+				test_series_set_row_label(&series, "%v", chain_length)
+				test_series_set_column_label(&series, "FMADepChainInterleaved")
+
+				tester := Repetition_tester{}
+				test_series_new_test_wave(&series, &tester, .op_count, rep_count, cpu_freq, 10)
+
+				for test_series_is_testing(&series, &tester) {
+					repetition_tester_begin_time(&tester)
+					fma_dep_chain_interleaved(chaint_count, chain_length)
+					repetition_tester_count_ops(&tester, rep_count)
+					repetition_tester_end_time(&tester)
+				}
+			}
+		}
+
+		if test_spaced {
+			for chain_length: u64 = 8; chain_length <= 256; chain_length += 8 {
+				rep_count: u64 = 1024 * 1024
+				chaint_count := rep_count / chain_length
+
+				rep_count = chaint_count * chain_length
+				test_series_set_row_label(&series, "%v", chain_length)
+				test_series_set_column_label(&series, "FMADepChainSpaced")
+
+				tester := Repetition_tester{}
+				test_series_new_test_wave(&series, &tester, .op_count, rep_count, cpu_freq, 10)
+
+				for test_series_is_testing(&series, &tester) {
+					repetition_tester_begin_time(&tester)
+					fma_dep_chain_spaced(chaint_count, chain_length)
+					repetition_tester_count_ops(&tester, rep_count)
+					repetition_tester_end_time(&tester)
+				}
 			}
 		}
 		stdout := os.stdout

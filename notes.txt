@@ -26,6 +26,8 @@ j_blow:
 
 rfluery:
     - https://www.dgtlgrove.com/
+    table driven code generation
+        - 
 
 Project idea to practice performance programming:
 
@@ -771,3 +773,10 @@ when sending a struct by value or reference, just look at the assembly
 only when the thing is big (more than 16B), and called alot of times, in optimized builds it usually gets inined anyway
 
 interleaaving puts alot of preassure on registers
+
+block interleaving: load chain 0 -> store chain 0 -> load chain 1 -> store chain 1 etc..
+loop fission
+
+mostly we want to do loop fusion, in this case not
+
+if you have very serialy dependant code than its better to split the loop into several loops, if there is enough to do in the loop without dependencies, its generaly better to combine loops together because the compiler can optimize it better and see whats going on

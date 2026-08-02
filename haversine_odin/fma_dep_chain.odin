@@ -68,3 +68,50 @@ fma_dep_chain_interleaved :: proc(chain_count, chain_length: u64) {
 		pretend_to_read(&R7)
 	}
 }
+
+fma_dep_chain_spaced :: proc(chain_count, chain_length: u64) {
+	spacing :: 16
+	initial_buffer: [spacing]f64
+	temp_buffer: [spacing]f64
+
+	for i := 0; i < spacing; i += 1 {
+		initial_buffer[i] = 1.01
+	}
+
+
+	for chain_index: u64 = 0; chain_index < chain_count; chain_index += spacing {
+		X2: f64 = 1.001
+		M: f64 = 0.01
+		pretend_to_write(&X2)
+		pretend_to_write(&M)
+
+		source := initial_buffer[:]
+		dest := temp_buffer[:]
+
+		for i := 0; i < spacing; i += 1 {
+			pretend_to_write(&source[i])
+		}
+
+
+		for i: u64 = 0; i < chain_length; i += 8 {
+			for spacing_index := 0; spacing_index < spacing; spacing_index += 1 {
+				R0: f64 = source[spacing_index]
+				R0 = fma(R0, X2, M)
+				R0 = fma(R0, X2, M)
+				R0 = fma(R0, X2, M)
+				R0 = fma(R0, X2, M)
+				R0 = fma(R0, X2, M)
+				R0 = fma(R0, X2, M)
+				R0 = fma(R0, X2, M)
+				R0 = fma(R0, X2, M)
+				dest[spacing_index] = R0
+			}
+			source = dest
+		}
+
+
+		for i := 0; i < spacing; i += 1 {
+			pretend_to_read(&dest[i])
+		}
+	}
+}

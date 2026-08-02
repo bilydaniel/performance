@@ -1,7 +1,6 @@
 monkey_type: trying all 10 proper: 51 
 day1:
     try different things, try your own style, techniques
-
 day2:
     dont free when not necesery, you are just slowing down the closing of the application 
 day3:
@@ -9,6 +8,15 @@ day3:
 day4:
     use debugger, always, alot
     use global variables temorarily to workour what needs to be where
+day5:
+    dont send structs as pointers that were made on a stack, compiler doesent know whats going on
+    try not to use globals, only for initial code,
+    use asserts, especially for things that you wont catch easily
+    dont overdo wrapping types, if someone calls the function with data that arent wrapped the same way, they need to wrap them in a struct needlesly
+    globals dont go on the stack
+day6:
     
+    
+
 
 
