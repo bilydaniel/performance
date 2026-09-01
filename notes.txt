@@ -1,10 +1,57 @@
+NEXT:
+    Ray Tracing in One Weekend series (Peter Shirley)
+    Scratchapixel (scratchapixel.com) — free, covers rendering/graphics math 
+    Essential Mathematics for Games and Interactive Applications (Van Verth & Bishop) — often mentioned alongside your 3D Math Primer book; more code-integrated and has practical exercises tied to actual game/graphics problems.
+    Foundations of Game Engine Development, Vol. 1: Mathematics (Eric Lengyel) 
+    Physically Based Rendering: From Theory to Implementation ("PBRT", pbr-book.org) 
+    Computer Graphics Through OpenGL: From Theory to Experiments
+    Game Programming Patterns (Robert Nystrom, gameprogrammingpatterns.com) — not math-focused, but free online, same "concept + code + so what" teaching style, extremely well loved.
+
+Math:
+    https://www.gamemath.com/book/cartesianspace.html
+    https://www.youtube.com/watch?v=sKCF8A3XGxQ&list=PLW3Zl3wyJwWOpdhYedlD-yCB7WQoHf-My
+    https://www.youtube.com/watch?v=fjOdtSu4Lm4&list=PLImQaTpSAdsArRFFj8bIfqMk2X7Vlf3XF&index=2&t=6174s
+
+    natureofcode:
+        - for non uniform randomness, make an array of repeated values
+        - qualifying random numbers, get random number, compute its probability to be picked by your definition and then pick another random to accept / deny the number
+    3b1b:
+        - think of vectors as an arrow at the origin, for now
+        - scalar(scaling) a vector by 2, multiplies the length of the vector by 2
+        - basis vector i hat(x)[1,0] and j hat(y)[0,1], any vector is then a scalar of the basis vectors summed together 
+        - different basis vectors give different coordinate systems
+        - linear combination (scale and sum) 
+        - span is all the possible combinations of two vectors(with scaling)
+        - linear transformation (transformation = function-> input => output (vectors)) 
+        - transformation = movement of the vector
+        - linear transformation = all lines must remain lines and the origin must stay fixed
+        - after transformation you only need to keep track of the basis vectors, all other vectors stay relative to the basis vectors
+        - linear transofrmation is then a 2x2 matrix, that show the coordinates of i hat and j hat
+        - vector matrix multiplication is then just multiplying the x coordinate of the vector with the new i hat, y with j hat
+        - this is where all the matrices for rotation etc. come from, they just describe where i / j hat ends up
+        - if you want to transform something, the transform matrix is on the left, vector on the right, matrices read from right to left, right transform is first, stems from function notations, inner(right) first
+        - determinant - how the area changes, negative if transofrmation flips the plane over, inverts orientation, in 3d the sign is negative if right hand coordinates flip to left hand
+        - linear system of equations in a matrix
+        - inverse matrix
+        - matrix * inverse matrix equals identity matrix (ones on the diagonal)
+        - if determinant is zero, there is no inverse
+        - rank = number of dimensions in the output of a transformation
+
 Try out GPUs:
     - https://www.youtube.com/watch?v=g8oeYnOLFM0&list=PLOz43BFq3KUHBSJpYlcP8gK0Z0SLmQlb_&index=1
     - https://gist.github.com/notnotrobby/ceef71527b4f15869133ba7b397912e9
 
+    - software renderer:
+        - subtractive model - cmyk, additive - rgb
+
 ginger bill:
     - https://www.youtube.com/watch?v=B9kSV2TaKpw
     - https://www.gingerbill.org/article/
+    
+    tools of the trade talk:
+        - lerp smoothing (linear interpolation where the closer you are the slower you go)
+
+
 
 casey:
     - https://caseymuratori.com/blog_0015
@@ -26,8 +73,9 @@ j_blow:
 
 rfluery:
     - https://www.dgtlgrove.com/
-    table driven code generation
-        - 
+    
+
+    
 
 Project idea to practice performance programming:
 
@@ -80,7 +128,7 @@ my main goal is to build the habits and skills to write code in a better way
 
 Keep the cpu in mind -> instructions in, work out
 
-to make program performant either reduce the number of instructions(simplify the algorithm) or or change the speed at which the instructions go through the cpu(different instructions take different time, or change the order of instructions, or how they access memory)
+to make program performant either reduce the number of instructions(simplify the algorithm)  or change the speed at which the instructions go through the cpu(different instructions take different time, or change the order of instructions, or how they access memory)
 think about what your code translates into(what asm instructions)
 
 Waste:
@@ -128,7 +176,7 @@ CASHING:
     Very important to performance, analyze them
     ADD A,INPUT[i] -> INPUT[i] is a LOAD, have to wait for it to finish
     Memory is a bottleneck(without cashing)
-    To work on anything, the cpu has to have the values in a register file(one of the registers), when loading, the cpu looks into its cashe to load them into the refisters first
+    To work on anything, the cpu has to have the values in a register file(one of the registers), when loading, the cpu looks into its cashe to load them into the registers first
     When loading from memory, a cashe line is copied(64 Bytes) usually into all the cashes(L1,L2,L3)
     L1(size = 32KB) speed = 3-4 cycles (64 bytes of data per cycle)
     L2(size = 256KB) speed = 14 cycles 
@@ -178,8 +226,6 @@ Clean code, horrible performance:
     Internals, instead of switch on types, can use pattern to just make a table of constants(24 -> 4)
     Small + 1 thing in function
     
-//TODO: QnA #3 31m
-//TODO: Instruction Decoding on the 8086
 
 Hyperthreading, logical cores
 
@@ -780,3 +826,22 @@ loop fission
 mostly we want to do loop fusion, in this case not
 
 if you have very serialy dependant code than its better to split the loop into several loops, if there is enough to do in the loop without dependencies, its generaly better to combine loops together because the compiler can optimize it better and see whats going on
+
+with intrusive thought during coding, just make sure the architecture you are making now wont make you not be able to fix the problems you are thinking about later
+if you are not sure if you should leave it for later, just decide on a strategy randomly and get the experience in dealing with it, make notes, todos, learn from it, dont follow each and every though, too much time spent in details, but sometimes do follow them and learn, productivity vs learning, use dice if unsure
+
+uops.info
+
+simd:
+    helps because of frontend slowing us down
+    how the data gets into the simd register, where do they come from, architecture, data
+    changed the way we write the program, cant really use branching, different kind of thinking
+    remove branches by changing the algorith reduce, recode and predicated calculations
+
+odin build . -microarch:native
+
+simd intrinsics: 
+    signaling = exception when nan
+    ordered / unordered - propagation of nan
+        
+

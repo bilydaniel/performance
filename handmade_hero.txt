@@ -15,8 +15,12 @@ day5:
     dont overdo wrapping types, if someone calls the function with data that arent wrapped the same way, they need to wrap them in a struct needlesly
     globals dont go on the stack
 day6:
-    
-    
+day7:
+    figure out audio for my game
+    audio lag
+    primary buffer for settings, secondary for actually writing the sound
+day8:
+day9:
 
 
 

@@ -33,11 +33,11 @@ test_functions := [?]Test_Function {
 		compute = reference_haversine_sum,
 		//verify = reference_verify_haversine,
 	},
-	{
-		name    = "HaversineCE",
-		compute = haversine_sum_ce,
-		//verify = reference_verify_haversine,
-	},
+	// {
+	// 	name    = "HaversineCE",
+	// 	compute = haversine_sum_ce,
+	// 	//verify = reference_verify_haversine,
+	// },
 }
 
 test_enum :: enum {
@@ -47,7 +47,7 @@ test_enum :: enum {
 main :: proc() {
 	context.logger = log.create_console_logger()
 
-	current_test: test_enum = .dependency_chain
+	current_test: test_enum = .reference_haversine
 
 	switch current_test {
 	case .reference_haversine:
@@ -183,6 +183,7 @@ reference_haversine_test :: proc() {
 
 			if !approx_equal(test_sum, reference_sum) {
 				sum_error_count += 1
+				fmt.printf("test_sum: %v, reference_sum: %v \n", test_sum, reference_sum)
 			}
 		}
 

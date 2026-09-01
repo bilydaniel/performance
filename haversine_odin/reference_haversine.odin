@@ -6,6 +6,7 @@ import "core:log"
 import "core:math"
 import "core:mem"
 import "core:os"
+import "core:simd"
 
 
 EARTH_RADIUS :: 6372.8 // KM
@@ -47,15 +48,15 @@ sin_ce :: proc(orig_x: f64) -> f64 {
 
 	x2 := x * x
 
-	r: f64 = 0h3CE883C1C5DEFFBE
-	r = fma(r, x2, 0hBD6AE43DC9BF8BA7)
-	r = fma(r, x2, 0h3DE6123CE513B09F)
-	r = fma(r, x2, 0hBE5AE6454D960AC4)
-	r = fma(r, x2, 0h3EC71DE3A52AAB96)
-	r = fma(r, x2, 0hBF2A01A01A014EB6)
-	r = fma(r, x2, 0h3F811111111110C9)
-	r = fma(r, x2, 0hBFC5555555555555)
-	r = fma(r, x2, 0h3FF0000000000000)
+	r: f64 = transmute(f64)u64(0x3ce883c1c5deffbe)
+	r = fma(r, x2, transmute(f64)u64(0xbd6ae43dc9bf8ba7))
+	r = fma(r, x2, transmute(f64)u64(0x3de6123ce513b09f))
+	r = fma(r, x2, transmute(f64)u64(0xbe5ae6454d960ac4))
+	r = fma(r, x2, transmute(f64)u64(0x3ec71de3a52aab96))
+	r = fma(r, x2, transmute(f64)u64(0xbf2a01a014eb6))
+	r = fma(r, x2, transmute(f64)u64(0x3f811111111110c9))
+	r = fma(r, x2, transmute(f64)u64(0xbfc5555555555555))
+	r = fma(r, x2, 1.0)
 	r *= x
 
 	result := orig_x < 0 ? -r : r
@@ -78,25 +79,25 @@ asin_core_from_squared :: proc(x2: f64) -> f64 {
 
 	x := sqrt_ce(x2)
 
-	r: f64 = 0h3FEDFC53682725CA
-	r = fma(r, x2, 0hC00BEC6DAF74ED61)
-	r = fma(r, x2, 0h4018BF4DADAF548C)
-	r = fma(r, x2, 0hC01B06F523E74F33)
-	r = fma(r, x2, 0h4014537DDDE2D76D)
-	r = fma(r, x2, 0hC006067D334B4792)
-	r = fma(r, x2, 0h3FF1FB54DA575B22)
-	r = fma(r, x2, 0hBFD57380BCD2890E)
-	r = fma(r, x2, 0h3FB69B370AAD086E)
-	r = fma(r, x2, 0hBF721438CCC95D62)
-	r = fma(r, x2, 0h3F8B8A33B8E380EF)
-	r = fma(r, x2, 0h3F8C37061F4E5F55)
-	r = fma(r, x2, 0h3F91C875D6C5323D)
-	r = fma(r, x2, 0h3F96E88CE94D1149)
-	r = fma(r, x2, 0h3F9F1C73443A02F5)
-	r = fma(r, x2, 0h3FA6DB6DB3184756)
-	r = fma(r, x2, 0h3FB3333333380DF2)
-	r = fma(r, x2, 0h3FC555555555531E)
-	r = fma(r, x2, 0h3FF0000000000000)
+	r: f64 = transmute(f64)u64(0x3fedfc53682725ca)
+	r = fma(r, x2, transmute(f64)u64(0xc00bec6daf74ed61))
+	r = fma(r, x2, transmute(f64)u64(0x4018bf4dadaf548c))
+	r = fma(r, x2, transmute(f64)u64(0xc01b06f523e74f33))
+	r = fma(r, x2, transmute(f64)u64(0x4014537ddde2d76d))
+	r = fma(r, x2, transmute(f64)u64(0xc006067d334b4792))
+	r = fma(r, x2, transmute(f64)u64(0x3ff1fb54da575b22))
+	r = fma(r, x2, transmute(f64)u64(0xbfd57380bcd2890e))
+	r = fma(r, x2, transmute(f64)u64(0x3fb69b370aad086e))
+	r = fma(r, x2, transmute(f64)u64(0xbf721438ccc95d62))
+	r = fma(r, x2, transmute(f64)u64(0x3f8b8a33b8e380ef))
+	r = fma(r, x2, transmute(f64)u64(0x3f8c37061f4e5f55))
+	r = fma(r, x2, transmute(f64)u64(0x3f91c875d6c5323d))
+	r = fma(r, x2, transmute(f64)u64(0x3f96e88ce94d1149))
+	r = fma(r, x2, transmute(f64)u64(0x3f9f1c73443a02f5))
+	r = fma(r, x2, transmute(f64)u64(0x3fa6db6db3184756))
+	r = fma(r, x2, transmute(f64)u64(0x3fb3333333380df2))
+	r = fma(r, x2, transmute(f64)u64(0x3fc555555555531e))
+	r = fma(r, x2, 1.0)
 	r *= x
 
 	return r
@@ -132,10 +133,29 @@ asin_ce :: proc(orig_x: f64) -> f64 {
 	result := needs_transform ? (1.57079632679489661923 - r) : r
 	return result
 }
+sine_core_with_prefix :: proc(a: f64, b: f64, c: f64) -> f64 {
+	x: f64 = fma(a, b, c)
+	x2 := x * x
+
+	r: f64 = transmute(f64)u64(0x3ce883c1c5deffbe)
+	r = fma(r, x2, transmute(f64)u64(0xbd6ae43dc9bf8ba7))
+	r = fma(r, x2, transmute(f64)u64(0x3de6123ce513b09f))
+	r = fma(r, x2, transmute(f64)u64(0xbe5ae6454d960ac4))
+	r = fma(r, x2, transmute(f64)u64(0x3ec71de3a52aab96))
+	r = fma(r, x2, transmute(f64)u64(0xbf2a01a01a014eb6))
+	r = fma(r, x2, transmute(f64)u64(0x3f811111111110c9))
+	r = fma(r, x2, transmute(f64)u64(0xbfc5555555555555))
+	r = fma(r, x2, 1.0)
+	r *= x
+
+	return r
+}
+
 
 expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 	sum: f64 = 0
 	sum_coeff := (2 * EARTH_RADIUS) / f64(len(setup.parsed_pairs))
+
 
 	for pair in setup.parsed_pairs {
 		x0 := pair.x0
@@ -144,19 +164,44 @@ expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 		y1 := pair.y1
 
 
-		radian_c := 0.01745329251994329577 // pi / 180
+		radian_c: f64 = 0.01745329251994329577 // pi / 180
 		radian_c_half := radian_c / 2
 		pi_half := PI64 / 2
+		deg180: f64 = 180
 
-		dx := (x1 - x0) * radian_c_half // dgr to rad + / 2
-		dy := (y1 - y0) * radian_c_half // always gets divided by 2, so just use half od radian_c
-		y0_rad := fma(y0, radian_c, pi_half) // always gets + pi_half
-		y1_rad := fma(y1, radian_c, pi_half)
+		//slc1: f64 = (y0 < 0) ? radian_c : -radian_c
+		slc1: f64 = -radian_c
+		//y0_abs := abs(y0)
 
-		s0: f64 = sin_ce(dy)
-		s1: f64 = sin_ce(y0_rad) // cos, pi_half in fma
-		s2: f64 = sin_ce(y1_rad) // cos
-		s3 := sin_ce(dx)
+		//slc2: f64 = (y1 < 0) ? radian_c : -radian_c
+		slc2: f64 = -radian_c
+		//y1_abs := abs(y1)
+
+		// dx := abs(x1 - x0)
+		// dy := abs(y1 - y0)
+
+		vector_values := #simd[4]f64{y0, y1, x1 - x0, y1 - y0}
+		vector_values2 := #simd[4]f64{180, 180, 180, 180}
+
+		simd.lanes_le(vector_values, vector_values2)
+		vector_abs := simd.abs(vector_values)
+		y0_abs := simd.extract(vector_abs, 0)
+		y1_abs := simd.extract(vector_abs, 1)
+		dx := simd.extract(vector_abs, 2)
+		dy := simd.extract(vector_abs, 3)
+
+		//slc0 := (dy < deg180) ? radian_c_half : -radian_c_half
+		slc0 := radian_c_half // always gets squared, sign doesent matter
+		//slc3 := (dx < deg180) ? radian_c_half : -radian_c_half
+		slc3 := radian_c_half // always gets squared, sign doesent matter
+
+		alc0 := (dy < deg180) ? 0 : -PI64
+		alc3 := (dx < deg180) ? 0 : -PI64
+
+		s1: f64 = sine_core_with_prefix(slc1, y0_abs, pi_half)
+		s2: f64 = sine_core_with_prefix(slc2, y1_abs, pi_half)
+		s0: f64 = sine_core_with_prefix(slc0, dy, alc0)
+		s3: f64 = sine_core_with_prefix(slc3, dx, alc3)
 
 		a: f64 = fma(s0, s0, s1 * s2 * s3 * s3)
 
@@ -164,11 +209,16 @@ expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 		// ASIN
 		needs_transform := a > 0.5
 		range_a := needs_transform ? (1.0 - a) : a
+		if range_a < 0 {
+			fmt.println(range_a)
+		}
 		r: f64 = asin_core_from_squared(range_a)
 		range_r := needs_transform ? (1.57079632679489661923 - r) : r
 
 		sum = fma(range_r, sum_coeff, sum)
 	}
+
+
 	return sum
 }
 

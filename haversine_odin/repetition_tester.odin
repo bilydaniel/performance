@@ -67,7 +67,7 @@ compute_derived_values :: proc(v: ^Value, cpu_freq: u64) {
 value_print :: proc(v: ^Value, label: string) {
 	fmt.printf("%s: %.0f", label, v.per_count[int(ValueType.Cpu_Time)])
 	fmt.printf(" (%.4fms)", 1000.0 * v.per_count[int(ValueType.Seconds)])
-	fmt.printf(" %fGOp/s", v.per_count[ValueType.g_op_per_second])
+	fmt.printf(" %f GOp/s", v.per_count[ValueType.g_op_per_second])
 
 	if v.per_count[int(ValueType.Byte_Count)] > 0.0 {
 		fmt.printf(" %.4fgb/s", v.per_count[int(ValueType.Gb_Per_Second)])
