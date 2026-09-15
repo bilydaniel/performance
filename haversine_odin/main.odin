@@ -31,6 +31,11 @@ test_functions := [?]Test_Function {
 		//verify = reference_verify_haversine,
 	},
 	{
+		name    = "ExpandedHaversineWide",
+		compute = expanded_haversine_wide,
+		//verify = reference_verify_haversine,
+	},
+	{
 		name    = "ReferenceHaversine",
 		compute = reference_haversine_sum,
 		//verify = reference_verify_haversine,
@@ -51,7 +56,7 @@ test_enum :: enum {
 main :: proc() {
 	context.logger = log.create_console_logger()
 
-	current_test: test_enum = .predicates
+	current_test: test_enum = .reference_haversine
 
 	switch current_test {
 	case .reference_haversine:

@@ -151,6 +151,30 @@ sine_core_with_prefix :: proc(a: f64, b: f64, c: f64) -> f64 {
 	return r
 }
 
+simd_f64 :: #force_inline proc "contextless" (val: u64) -> #simd[4]f64 {
+	f := transmute(f64)val
+	return {f, f, f, f}
+}
+
+sine_core_with_prefix_wide :: proc(a: #simd[4]f64, b: #simd[4]f64, c: #simd[4]f64) -> #simd[4]f64 {
+	//x: f64 = fma(a, b, c)
+	x := simd.fused_mul_add(a, b, c)
+	x2 := x * x
+
+	r: #simd[4]f64 = transmute(f64)u64(0x3ce883c1c5deffbe)
+	r = simd.fused_mul_add(r, x2, simd_f64(0xbd6ae43dc9bf8ba7))
+	r = fma(r, x2, simd_f64(0x3de6123ce513b09f))
+	r = fma(r, x2, simd_f64(0xbe5ae6454d960ac4))
+	r = fma(r, x2, simd_f64(0x3ec71de3a52aab96))
+	r = fma(r, x2, simd_f64(0xbf2a01a01a014eb6))
+	r = fma(r, x2, simd_f64(0x3f811111111110c9))
+	r = fma(r, x2, simd_f64(0xbfc5555555555555))
+	r = fma(r, x2, 1.0)
+	r *= x
+
+	return r
+}
+
 
 expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 	sum: f64 = 0
@@ -195,6 +219,72 @@ expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 		s3: f64 = sine_core_with_prefix(slc3, dx, alc3)
 
 		a: f64 = fma(s0, s0, s1 * s2 * s3 * s3)
+
+
+		// ASIN
+		needs_transform := a > 0.5
+		range_a := needs_transform ? (1.0 - a) : a
+		r: f64 = asin_core_from_squared(range_a)
+		range_r := needs_transform ? (1.57079632679489661923 - r) : r
+
+		sum = fma(range_r, sum_coeff, sum)
+	}
+
+
+	return sum
+}
+
+
+expanded_haversine_wide :: proc(setup: Haversine_Setup) -> f64 {
+	sum: f64 = 0
+	sum_coeff := (2 * EARTH_RADIUS) / f64(len(setup.parsed_pairs))
+
+	for pair in setup.parsed_pairs {
+		x0: #simd[4]f64 = pair.x0
+		x1: #simd[4]f64 = pair.x1
+		y0: #simd[4]f64 = pair.y0
+		y1: #simd[4]f64 = pair.y1
+
+
+		radian_c: #simd[4]f64 = 0.01745329251994329577 // pi / 180
+		radian_c_half: #simd[4]f64 = radian_c / 2
+		pi_half: #simd[4]f64 = PI64 / 2
+		deg180: #simd[4]f64 = 180
+
+		//slc1: f64 = (y0 < 0) ? radian_c : -radian_c
+		slc1 := -radian_c
+		y0_abs := simd.abs(y0) //abs(y0)
+
+		//slc2: f64 = (y1 < 0) ? radian_c : -radian_c
+		slc2 := -radian_c
+		y1_abs := simd.abs(y1)
+
+		dx := simd.abs(x1 - x0)
+		dy := simd.abs(y1 - y0)
+
+
+		//slc0 := (dy < deg180) ? radian_c_half : -radian_c_half
+		slc0 := radian_c_half // always gets squared, sign doesent matter
+		//slc3 := (dx < deg180) ? radian_c_half : -radian_c_half
+		slc3 := radian_c_half // always gets squared, sign doesent matter
+
+		simd_zero: #simd[4]f64 = 0
+		simd_minus_pi: #simd[4]f64 = -PI64
+
+		//alc0 := (dy < deg180) ? 0 : -PI64
+		alc0_mask := simd.lanes_lt(dy, deg180)
+		alc0 := intrinsics.simd_select(alc0_mask, simd_zero, simd_minus_pi)
+
+		//alc3 := (dx < deg180) ? 0 : -PI64
+		alc3_mask := simd.lanes_lt(dx, deg180)
+		alc3 := intrinsics.simd_select(alc3_mask, simd_zero, simd_minus_pi)
+
+		s1 := sine_core_with_prefix_wide(slc1, y0_abs, pi_half)
+		s2 := sine_core_with_prefix_wide(slc2, y1_abs, pi_half)
+		s0 := sine_core_with_prefix_wide(slc0, dy, alc0)
+		s3 := sine_core_with_prefix_wide(slc3, dx, alc3)
+
+		a := fma(s0, s0, s1 * s2 * s3 * s3)
 
 
 		// ASIN
