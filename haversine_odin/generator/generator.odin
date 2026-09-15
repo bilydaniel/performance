@@ -42,7 +42,7 @@ generate_value_center :: proc(center, radius, max_val: f64) -> f64 {
 		max_value = max_val
 	}
 
-	result := random_in_range(min_val, max_val)
+	result := random_in_range(min_value, max_value)
 	return result
 }
 
@@ -52,9 +52,14 @@ haversine :: proc(x0, y0, x1, y1, radius: f64) -> f64 {
 	y0_rad := dgr_to_rad(y0)
 	y1_rad := dgr_to_rad(y1)
 
-	root_term :=
-		(math.sin(dy / 2) * math.sin(dy / 2)) +
-		math.cos(y0_rad) * math.cos(y1_rad) * (math.sin(dx / 2) * math.sin(dx / 2))
+	sin_dy_2 := math.sin(dy / 2.0)
+	sin_dx_2 := math.sin(dx / 2.0)
+
+	term_a := sin_dy_2 * sin_dy_2
+	term_b := math.cos(y0_rad) * math.cos(y1_rad) * sin_dx_2 * sin_dx_2
+
+	root_term := term_a + term_b
+
 	result := 2 * radius * math.asin(math.sqrt(root_term))
 	return result
 }
@@ -72,14 +77,13 @@ parse_args :: proc(args: []string) -> (Arguments, bool) {
 	}
 
 	for arg in args {
-		fmt.printf("arg: %s\n", arg)
 		if strings.has_prefix(arg, "--") {
 			if idx := strings.index(arg, "="); idx != -1 {
 				key := arg[:idx]
 				value := arg[idx + 1:]
 
-				fmt.printf("key: %s\n", key)
-				fmt.printf("v: %s\n", value)
+				// fmt.printf("key: %s\n", key)
+				// fmt.printf("v: %s\n", value)
 
 				if key == "--uniform" {
 					if value == "true" {
@@ -118,6 +122,7 @@ parse_args :: proc(args: []string) -> (Arguments, bool) {
 
 main :: proc() {
 	arguments, ok := parse_args(os.args)
+	fmt.printf("arguments: %v\n", arguments)
 	if !ok {
 		os.exit(1)
 	}
@@ -125,14 +130,14 @@ main :: proc() {
 	rand.reset(arguments.seed)
 
 	file, err1 := os.open("pairs.json", os.O_WRONLY | os.O_CREATE | os.O_TRUNC)
-	if err1 != 0 {
+	if err1 != nil {
 		fmt.eprintln("Error creating pairs.json")
 		os.exit(1)
 	}
 	defer os.close(file)
 
 	file_answers, err2 := os.open("answers.f64", os.O_WRONLY | os.O_CREATE | os.O_TRUNC)
-	if err2 != 0 {
+	if err2 != nil {
 		fmt.eprintln("Error creating answers.f64")
 		os.exit(1)
 	}
@@ -165,10 +170,10 @@ main :: proc() {
 			point1.x = random_in_range(-180, 180)
 			point1.y = random_in_range(-90, 90)
 		} else {
-			point0.x = generate_value_center(180, center.x, radiusx)
-			point0.y = generate_value_center(90, center.y, radiusy)
-			point1.x = generate_value_center(180, center.x, radiusx)
-			point1.y = generate_value_center(90, center.y, radiusy)
+			point0.x = generate_value_center(center.x, radiusx, 180)
+			point0.y = generate_value_center(center.y, radiusy, 90)
+			point1.x = generate_value_center(center.x, radiusx, 180)
+			point1.y = generate_value_center(center.y, radiusy, 90)
 		}
 
 		haversine_value := haversine(point0.x, point0.y, point1.x, point1.y, EARTH_RADIUS)

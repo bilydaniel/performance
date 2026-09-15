@@ -216,8 +216,8 @@ reference_haversine :: proc(x0, y0, x1, y1, radius: f64) -> f64 {
 	sin_dy_2 := math.sin(dy / 2.0)
 	sin_dx_2 := math.sin(dx / 2.0)
 
-	term_a := math.pow(sin_dy_2, 2)
-	term_b := math.cos(y0_rad) * math.cos(y1_rad) * math.pow(sin_dx_2, 2)
+	term_a := sin_dy_2 * sin_dy_2
+	term_b := math.cos(y0_rad) * math.cos(y1_rad) * sin_dx_2 * sin_dx_2
 
 	root_term := term_a + term_b
 
@@ -227,13 +227,14 @@ reference_haversine :: proc(x0, y0, x1, y1, radius: f64) -> f64 {
 
 reference_haversine_sum :: proc(setup: Haversine_Setup) -> f64 {
 	sum: f64 = 0
-	sum_coeff := 1.0 / f64(len(setup.parsed_pairs))
+	//sum_coeff := 1.0 / f64(len(setup.parsed_pairs))
 
 	for pair in setup.parsed_pairs {
 		dist := reference_haversine(pair.x0, pair.y0, pair.x1, pair.y1, EARTH_RADIUS)
-		sum += sum_coeff * dist
+		sum += dist
 	}
-	return sum
+
+	return sum / f64(len(setup.parsed_pairs))
 }
 
 haversine_sum_ce :: proc(setup: Haversine_Setup) -> f64 {

@@ -1,22 +1,60 @@
 package haversine
 
 import "base:intrinsics"
-import "core:sys/posix"
+import "core:sys/windows"
 
 read_cpu_timer :: proc "contextless" () -> u64 {
 	return u64(intrinsics.read_cycle_counter())
 }
 
-read_os_timer :: proc() -> u64 {
-	value: posix.timeval
-	posix.gettimeofday(&value, nil)
-	return 1_000_000 * u64(value.tv_sec) + u64(value.tv_usec)
+// LINUX
+
+// read_os_timer :: proc() -> u64 {
+// 	value: posix.timeval
+// 	posix.gettimeofday(&value, nil)
+// 	return 1_000_000 * u64(value.tv_sec) + u64(value.tv_usec)
+// }
+
+// read_os_page_fault_count :: proc() -> u64 {
+// 	usage: posix.rusage
+// 	posix.getrusage(.SELF, &usage)
+// 	return u64(usage.ru_minflt + usage.ru_majflt)
+// }
+
+foreign import psapi "system:Psapi.lib"
+
+@(default_calling_convention="system")
+foreign psapi {
+    GetProcessMemoryInfo :: proc(
+        hProcess: windows.HANDLE, 
+        ppsmemCounters: ^PROCESS_MEMORY_COUNTERS, 
+        cb: windows.DWORD,
+    ) -> windows.BOOL ---
+}
+
+PROCESS_MEMORY_COUNTERS :: struct {
+    cb:                       windows.DWORD,
+    PageFaultCount:           windows.DWORD,
+    PeakWorkingSetSize:       uint,
+    WorkingSetSize:           uint,
+    QuotaPeakPagedPoolUsage:  uint,
+    QuotaPagedPoolUsage:      uint,
+    QuotaPeakNonPagedPoolUsage: uint,
+    QuotaNonPagedPoolUsage:   uint,
+    PagefileUsage:            uint,
+    PeakPagefileUsage:        uint,
 }
 
 read_os_page_fault_count :: proc() -> u64 {
-	usage: posix.rusage
-	posix.getrusage(.SELF, &usage)
-	return u64(usage.ru_minflt + usage.ru_majflt)
+    pmc: PROCESS_MEMORY_COUNTERS
+    pmc.cb = size_of(PROCESS_MEMORY_COUNTERS)
+
+    h_process := windows.GetCurrentProcess()
+    if GetProcessMemoryInfo(h_process, &pmc, windows.DWORD(pmc.cb)) {
+        return u64(pmc.PageFaultCount)
+    }
+    
+    return 0
 }
 
 estimate_cpu_timer_freq :: proc() -> u64 {
@@ -47,13 +85,13 @@ estimate_cpu_timer_freq :: proc() -> u64 {
 }
 
 // FOR WINDOWS
-// read_os_timer_freq :: proc() -> u64 {
-// 	freq: win32.LARGE_INTEGER
-// 	win32.QueryPerformanceFrequency(&freq)
-// 	return u64(freq)
-// }
-// read_os_timer :: proc() -> u64 {
-// 	value: win32.LARGE_INTEGER
-// 	win32.QueryPerformanceCounter(&value)
-// 	return u64(value)
-// }
+read_os_timer_freq :: proc() -> u64 {
+	freq: windows.LARGE_INTEGER
+	windows.QueryPerformanceFrequency(&freq)
+	return u64(freq)
+}
+read_os_timer :: proc() -> u64 {
+	value: windows.LARGE_INTEGER
+	windows.QueryPerformanceCounter(&value)
+	return u64(value)
+}

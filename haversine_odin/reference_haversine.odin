@@ -171,24 +171,15 @@ expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 
 		//slc1: f64 = (y0 < 0) ? radian_c : -radian_c
 		slc1: f64 = -radian_c
-		//y0_abs := abs(y0)
+		y0_abs := abs(y0)
 
 		//slc2: f64 = (y1 < 0) ? radian_c : -radian_c
 		slc2: f64 = -radian_c
-		//y1_abs := abs(y1)
+		y1_abs := abs(y1)
 
-		// dx := abs(x1 - x0)
-		// dy := abs(y1 - y0)
+		dx := abs(x1 - x0)
+		dy := abs(y1 - y0)
 
-		vector_values := #simd[4]f64{y0, y1, x1 - x0, y1 - y0}
-		vector_values2 := #simd[4]f64{180, 180, 180, 180}
-
-		simd.lanes_le(vector_values, vector_values2)
-		vector_abs := simd.abs(vector_values)
-		y0_abs := simd.extract(vector_abs, 0)
-		y1_abs := simd.extract(vector_abs, 1)
-		dx := simd.extract(vector_abs, 2)
-		dy := simd.extract(vector_abs, 3)
 
 		//slc0 := (dy < deg180) ? radian_c_half : -radian_c_half
 		slc0 := radian_c_half // always gets squared, sign doesent matter
@@ -209,9 +200,6 @@ expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 		// ASIN
 		needs_transform := a > 0.5
 		range_a := needs_transform ? (1.0 - a) : a
-		if range_a < 0 {
-			fmt.println(range_a)
-		}
 		r: f64 = asin_core_from_squared(range_a)
 		range_r := needs_transform ? (1.57079632679489661923 - r) : r
 
