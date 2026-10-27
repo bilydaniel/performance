@@ -7,7 +7,6 @@ import "core:os"
 import "core:simd"
 
 
-// Mirrors the anonymous `testFunction` struct in the Zig version.
 Test_Function :: struct {
 	name:    string,
 	compute: Compute_Func,
@@ -51,6 +50,7 @@ test_enum :: enum {
 	reference_haversine,
 	dependency_chain,
 	predicates,
+	shuffle_puzzles,
 }
 
 main :: proc() {
@@ -65,6 +65,8 @@ main :: proc() {
 		dependency_chain_test()
 	case .predicates:
 		predicates_test()
+	case .shuffle_puzzles:
+		shuffle_puzzles()
 	}
 
 }
@@ -341,4 +343,117 @@ print_predicate :: proc(label: string, input_value: f64, scalar_answer: bool, av
 	}
 
 	fmt.printf("%016x\n", avx_answer)
+}
+
+
+SHUFIMM_2x4 :: #force_inline proc "contextless" (e0: u8, e1: u8) -> u8 {
+	result: u8 = e0 | (e1 << 4)
+	return result
+}
+
+SHUFIMM_4x2 :: #force_inline proc "contextless" (e0: u8, e1: u8, e2: u8, e3: u8) -> u8 {
+	result: u8 = e0 | (e1 << 2) | (e2 << 4) | (e3 << 6)
+	return result
+}
+
+SHUFIMM_4x1 :: #force_inline proc "contextless" (e0: u8, e1: u8, e2: u8, e3: u8) -> u8 {
+	result: u8 = e0 | (e1 << 1) | (e2 << 2) | (e3 << 3)
+	return result
+}
+
+simd_type :: #simd[32]u8
+
+SolutionGoesHere :: proc(A: simd_type) -> simd_type {
+	result: #simd[32]u8 = 97
+	return result
+}
+
+Puzzle0 :: proc(A: simd_type) -> simd_type {
+	x := transmute(#simd[8]u32)A
+	x = simd.swizzle(x, 2, 3, 0, 1, 6, 7, 4, 5)
+	result := transmute(simd_type)x
+	return result
+}
+
+Puzzle1 :: proc(A: simd_type) -> simd_type {
+	x := transmute(#simd[8]u32)A
+	x = simd.swizzle(x, 7, 4, 2, 5, 6, 0, 1, 3)
+	result := transmute(simd_type)x
+	return result
+}
+Puzzle2 :: proc(A: simd_type) -> simd_type {
+	x := transmute(#simd[8]u32)A
+	x = simd.swizzle(x, 2, 3, 0, 1, 6, 7, 4, 5)
+	result := transmute(simd_type)x
+	return result
+}
+Puzzle3 :: proc(A: simd_type) -> simd_type {
+	x := transmute(#simd[8]u32)A
+	x = simd.swizzle(x, 2, 3, 0, 1, 6, 7, 4, 5)
+	result := transmute(simd_type)x
+	return result
+}
+Puzzle4 :: proc(A: simd_type) -> simd_type {
+	result := SolutionGoesHere(A)
+
+	return result
+}
+Puzzle5 :: proc(A: simd_type) -> simd_type {
+	result := SolutionGoesHere(A)
+
+	return result
+}
+Puzzle6 :: proc(A: simd_type) -> simd_type {
+	result := SolutionGoesHere(A)
+
+	return result
+}
+
+Match :: proc(label: string, value: #simd[32]u8, target: string) {
+	SIMD_BYTE_COUNT :: 32
+	error_count: u32 = 0
+
+	value_arr := simd.to_array(value)
+
+
+	for i := 0; i < SIMD_BYTE_COUNT; i += 1 {
+		if value_arr[i] != target[i] {
+			error_count += 1
+		}
+	}
+
+	fmt.printf("%v\n", label)
+	fmt.printf("error_count: %v\n", error_count)
+	if error_count > 0 {
+		fmt.printf("target: %v\n", target)
+		fmt.printf("value: %s\n", value_arr)
+	}
+
+}
+
+shuffle_puzzles :: proc() {
+
+	//ValuesA: string = "abcdefghijklmnopqrstuvwx12345678"
+	// ValuesA: string = "abcd" + "efghijklmnopqrstuvwx12345677"
+	// ValuesB: string = "ABCDEFGHIJKLMNOPQRSTUVWX.,;-=[]|"
+
+	ValuesA := "abcd" + "efgh" + "ijkl" + "mnop" + "qrst" + "uvwx" + "1234" + "5678"
+	ValuesB := "ABCD" + "EFGH" + "IJKL" + "MNOP" + "QRST" + "UVWX" + ".,+-" + "=[]|"
+
+	values_a_data := ([^]u8)(raw_data(ValuesA))[0:32]
+	A: #simd[32]u8 = simd.from_slice(#simd[32]u8, values_a_data)
+
+	Match("Puzzle0", Puzzle0(A), "ijklmnopabcdefgh12345678qrstuvwx")
+	Match("Puzzle1", Puzzle1(A), "5678qrstijkluvwx1234abcdefghmnop")
+	Match("Puzzle2", Puzzle2(A), "keiadbcmfgljnohpsr5tuq8wx1234v67")
+	Match("Puzzle3", Puzzle3(A), "3fch1267ab8d45eguxlqvminopwjktrs")
+
+	// //
+	// // NOTE(casey): Two-input puzzles
+	// //
+	//
+	// Match("Puzzle4", Puzzle4(A, B), "ijkl" "mnop" "ABCD" "EFGH" "qrst" "uvwx" ".,;-" "=[]|");
+	// Match("Puzzle5", Puzzle5(A, B), "ijkl" "abcd" "MNOP" "EFGH" "1234" "qrst" "=[]|" "UVWX");
+	// Match("Puzzle6", Puzzle6(A, B), ";V=0" "X.|W" "T,Q]" "URS-" "u7x8" "0123" "rsqv" "04wt");
+	//
 }

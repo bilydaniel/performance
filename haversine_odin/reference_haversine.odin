@@ -103,6 +103,35 @@ asin_core_from_squared :: proc(x2: f64) -> f64 {
 	return r
 }
 
+
+asin_core_from_squared_wide :: proc(x2: #simd[4]f64) -> #simd[4]f64 {
+	//x := sqrt_ce(x2)
+	x := simd.sqrt(x2)
+
+	r := simd_f64(0x3fedfc53682725ca)
+	r = fma(r, x2, simd_f64(0xc00bec6daf74ed61))
+	r = fma(r, x2, simd_f64(0x4018bf4dadaf548c))
+	r = fma(r, x2, simd_f64(0xc01b06f523e74f33))
+	r = fma(r, x2, simd_f64(0x4014537ddde2d76d))
+	r = fma(r, x2, simd_f64(0xc006067d334b4792))
+	r = fma(r, x2, simd_f64(0x3ff1fb54da575b22))
+	r = fma(r, x2, simd_f64(0xbfd57380bcd2890e))
+	r = fma(r, x2, simd_f64(0x3fb69b370aad086e))
+	r = fma(r, x2, simd_f64(0xbf721438ccc95d62))
+	r = fma(r, x2, simd_f64(0x3f8b8a33b8e380ef))
+	r = fma(r, x2, simd_f64(0x3f8c37061f4e5f55))
+	r = fma(r, x2, simd_f64(0x3f91c875d6c5323d))
+	r = fma(r, x2, simd_f64(0x3f96e88ce94d1149))
+	r = fma(r, x2, simd_f64(0x3f9f1c73443a02f5))
+	r = fma(r, x2, simd_f64(0x3fa6db6db3184756))
+	r = fma(r, x2, simd_f64(0x3fb3333333380df2))
+	r = fma(r, x2, simd_f64(0x3fc555555555531e))
+	r = fma(r, x2, 1.0)
+	r *= x
+
+	return r
+}
+
 asin_ce :: proc(orig_x: f64) -> f64 {
 	needs_transform := orig_x > 0.7071067811865475244
 	x := needs_transform ? sqrt_ce(1.0 - orig_x * orig_x) : orig_x
@@ -161,8 +190,8 @@ sine_core_with_prefix_wide :: proc(a: #simd[4]f64, b: #simd[4]f64, c: #simd[4]f6
 	x := simd.fused_mul_add(a, b, c)
 	x2 := x * x
 
-	r: #simd[4]f64 = transmute(f64)u64(0x3ce883c1c5deffbe)
-	r = simd.fused_mul_add(r, x2, simd_f64(0xbd6ae43dc9bf8ba7))
+	r: #simd[4]f64 = simd_f64(0x3ce883c1c5deffbe)
+	r = fma(r, x2, simd_f64(0xbd6ae43dc9bf8ba7))
 	r = fma(r, x2, simd_f64(0x3de6123ce513b09f))
 	r = fma(r, x2, simd_f64(0xbe5ae6454d960ac4))
 	r = fma(r, x2, simd_f64(0x3ec71de3a52aab96))
@@ -236,27 +265,39 @@ expanded_haversine :: proc(setup: Haversine_Setup) -> f64 {
 
 
 expanded_haversine_wide :: proc(setup: Haversine_Setup) -> f64 {
-	sum: f64 = 0
-	sum_coeff := (2 * EARTH_RADIUS) / f64(len(setup.parsed_pairs))
+	sum: #simd[4]f64 = 0
+	sum_coeff: #simd[4]f64 = (2 * EARTH_RADIUS) / f64(len(setup.parsed_pairs))
 
-	for pair in setup.parsed_pairs {
-		x0: #simd[4]f64 = pair.x0
-		x1: #simd[4]f64 = pair.x1
-		y0: #simd[4]f64 = pair.y0
-		y1: #simd[4]f64 = pair.y1
+
+	number_of_pairs := len(setup.parsed_pairs)
+	for i := 0; i < number_of_pairs; i += 4 {
+		p0 := setup.parsed_pairs[i + 0]
+		p1 := setup.parsed_pairs[i + 1]
+		p2 := setup.parsed_pairs[i + 2]
+		p3 := setup.parsed_pairs[i + 3]
+
+		x0: #simd[4]f64 = {p0.x0, p1.x0, p2.x0, p3.x0}
+		x1: #simd[4]f64 = {p0.x1, p1.x1, p2.x1, p3.x1}
+		y0: #simd[4]f64 = {p0.y0, p1.y0, p2.y0, p3.y0}
+		y1: #simd[4]f64 = {p0.y1, p1.y1, p2.y1, p3.y1}
+
+		shuffle_result := simd.shuffle(x0, x1, 0, 5, 1, 6)
 
 
 		radian_c: #simd[4]f64 = 0.01745329251994329577 // pi / 180
+		radian_c_neg := -radian_c
 		radian_c_half: #simd[4]f64 = radian_c / 2
 		pi_half: #simd[4]f64 = PI64 / 2
 		deg180: #simd[4]f64 = 180
+		simd_zero: #simd[4]f64 = 0
+		simd_minus_pi: #simd[4]f64 = -PI64
+		simd_minus_pi_u64 := transmute(#simd[4]u64)simd_minus_pi
+		half: #simd[4]f64 = 0.5
 
 		//slc1: f64 = (y0 < 0) ? radian_c : -radian_c
-		slc1 := -radian_c
 		y0_abs := simd.abs(y0) //abs(y0)
 
 		//slc2: f64 = (y1 < 0) ? radian_c : -radian_c
-		slc2 := -radian_c
 		y1_abs := simd.abs(y1)
 
 		dx := simd.abs(x1 - x0)
@@ -264,40 +305,62 @@ expanded_haversine_wide :: proc(setup: Haversine_Setup) -> f64 {
 
 
 		//slc0 := (dy < deg180) ? radian_c_half : -radian_c_half
-		slc0 := radian_c_half // always gets squared, sign doesent matter
+		//slc0 := radian_c_half // always gets squared, sign doesent matter
 		//slc3 := (dx < deg180) ? radian_c_half : -radian_c_half
-		slc3 := radian_c_half // always gets squared, sign doesent matter
+		//slc3 := radian_c_half // always gets squared, sign doesent matter
 
-		simd_zero: #simd[4]f64 = 0
-		simd_minus_pi: #simd[4]f64 = -PI64
 
 		//alc0 := (dy < deg180) ? 0 : -PI64
 		alc0_mask := simd.lanes_lt(dy, deg180)
-		alc0 := intrinsics.simd_select(alc0_mask, simd_zero, simd_minus_pi)
+		//alc0 := intrinsics.simd_select(alc0_mask, simd_zero, simd_minus_pi)
+
+		alc0_u64 := intrinsics.simd_bit_and_not(simd_minus_pi_u64, alc0_mask)
+		alc0 := transmute(#simd[4]f64)alc0_u64
 
 		//alc3 := (dx < deg180) ? 0 : -PI64
 		alc3_mask := simd.lanes_lt(dx, deg180)
-		alc3 := intrinsics.simd_select(alc3_mask, simd_zero, simd_minus_pi)
+		//alc3 := intrinsics.simd_select(alc3_mask, simd_zero, simd_minus_pi)
+		alc3_u64 := intrinsics.simd_bit_and_not(simd_minus_pi_u64, alc3_mask)
+		alc3 := transmute(#simd[4]f64)alc3_u64
 
-		s1 := sine_core_with_prefix_wide(slc1, y0_abs, pi_half)
-		s2 := sine_core_with_prefix_wide(slc2, y1_abs, pi_half)
-		s0 := sine_core_with_prefix_wide(slc0, dy, alc0)
-		s3 := sine_core_with_prefix_wide(slc3, dx, alc3)
+		s1 := sine_core_with_prefix_wide(radian_c_neg, y0_abs, pi_half)
+		s2 := sine_core_with_prefix_wide(radian_c_neg, y1_abs, pi_half)
+		s0 := sine_core_with_prefix_wide(radian_c_half, dy, alc0)
+		s3 := sine_core_with_prefix_wide(radian_c_half, dx, alc3)
 
 		a := fma(s0, s0, s1 * s2 * s3 * s3)
 
 
 		// ASIN
-		needs_transform := a > 0.5
-		range_a := needs_transform ? (1.0 - a) : a
-		r: f64 = asin_core_from_squared(range_a)
-		range_r := needs_transform ? (1.57079632679489661923 - r) : r
+		//needs_transform := a > 0.5
+		needs_transform_true := 1.0 - a
+		needs_transform_false := a
+
+		needs_transform_mask := simd.lanes_gt(a, half)
+		//range_a := needs_transform ? (1.0 - a) : a
+		range_a := intrinsics.simd_select(
+			needs_transform_mask,
+			needs_transform_true,
+			needs_transform_false,
+		)
+
+		r := asin_core_from_squared_wide(range_a)
+
+		//range_r := needs_transform ? (1.57079632679489661923 - r) : r
+		pi_half_minus_r := pi_half - r
+		range_r := intrinsics.simd_select(needs_transform_mask, pi_half_minus_r, r)
 
 		sum = fma(range_r, sum_coeff, sum)
 	}
 
+	sum1 := simd.shuffle(sum, sum, 1, 0, 3, 2)
+	sum2 := sum + sum1
+	sum3 := simd.shuffle(sum2, sum2, 2, 3, 0, 1)
+	res := sum2 + sum3
 
-	return sum
+	result := simd.extract(res, 0)
+
+	return result
 }
 
 read_entire_file :: proc(name: string) -> ([]u8, os.Error) {

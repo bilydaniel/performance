@@ -23,43 +23,40 @@ read_cpu_timer :: proc "contextless" () -> u64 {
 
 foreign import psapi "system:Psapi.lib"
 
-@(default_calling_convention="system")
+@(default_calling_convention = "system")
 foreign psapi {
-    GetProcessMemoryInfo :: proc(
-        hProcess: windows.HANDLE, 
-        ppsmemCounters: ^PROCESS_MEMORY_COUNTERS, 
-        cb: windows.DWORD,
-    ) -> windows.BOOL ---
+	GetProcessMemoryInfo :: proc(hProcess: windows.HANDLE, ppsmemCounters: ^PROCESS_MEMORY_COUNTERS, cb: windows.DWORD) -> windows.BOOL ---
 }
 
 PROCESS_MEMORY_COUNTERS :: struct {
-    cb:                       windows.DWORD,
-    PageFaultCount:           windows.DWORD,
-    PeakWorkingSetSize:       uint,
-    WorkingSetSize:           uint,
-    QuotaPeakPagedPoolUsage:  uint,
-    QuotaPagedPoolUsage:      uint,
-    QuotaPeakNonPagedPoolUsage: uint,
-    QuotaNonPagedPoolUsage:   uint,
-    PagefileUsage:            uint,
-    PeakPagefileUsage:        uint,
+	cb:                         windows.DWORD,
+	PageFaultCount:             windows.DWORD,
+	PeakWorkingSetSize:         uint,
+	WorkingSetSize:             uint,
+	QuotaPeakPagedPoolUsage:    uint,
+	QuotaPagedPoolUsage:        uint,
+	QuotaPeakNonPagedPoolUsage: uint,
+	QuotaNonPagedPoolUsage:     uint,
+	PagefileUsage:              uint,
+	PeakPagefileUsage:          uint,
 }
 
 read_os_page_fault_count :: proc() -> u64 {
-    pmc: PROCESS_MEMORY_COUNTERS
-    pmc.cb = size_of(PROCESS_MEMORY_COUNTERS)
+	pmc: PROCESS_MEMORY_COUNTERS
+	pmc.cb = size_of(PROCESS_MEMORY_COUNTERS)
 
-    h_process := windows.GetCurrentProcess()
-    if GetProcessMemoryInfo(h_process, &pmc, windows.DWORD(pmc.cb)) {
-        return u64(pmc.PageFaultCount)
-    }
-    
-    return 0
+	h_process := windows.GetCurrentProcess()
+	if GetProcessMemoryInfo(h_process, &pmc, windows.DWORD(pmc.cb)) {
+		return u64(pmc.PageFaultCount)
+	}
+
+	return 0
 }
 
 estimate_cpu_timer_freq :: proc() -> u64 {
 	MILLISECONDS_TO_WAIT :: 100
-	OS_FREQ :: 1_000_000
+	// OS_FREQ :: 1_000_000 // linux
+	OS_FREQ :: 10_000_000 // win
 
 	cpu_start := read_cpu_timer()
 	os_start := read_os_timer()
